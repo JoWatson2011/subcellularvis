@@ -6,46 +6,62 @@ source("R/runSubcellulaRvis.R")
 ui <- fluidPage(
 
   #Title
-  titlePanel("Visualise Subcellular Localisation of Omics Data"),
+  titlePanel("Visualise Subcellular Localisation of 'Omics Data"),
 
   sidebarLayout(
-    sidebarPanel(textInput(inputId = "input_genes",
-                           label = NULL),
+    sidebarPanel(textAreaInput(inputId = "input_genes_text",
+                               label = "List of genes, \none per line"),
                  
-                  fileInput(inputId = "input_genes",
+                 actionButton(inputId = "action_text",
+                              label = "From textbox"),
+                 
+                  fileInput(inputId = "input_genes_file",
                            label = "Select file",
-                           multiple = F),
+                           multiple = F,
+                           placeholder = ".txt file of genes"),
                  
-                 actionButton(inputId = "action",
-                              label = "Visualise"),
-                 
-                 downloadButton(outputId = "downloadPlot", 
-                                label = "Download")
+                 actionButton(inputId = "action_file",
+                              label = "From .txt file")
                  ),
 
     mainPanel(
       plotOutput(outputId = "plot_cell"),
       br(),br(),
-      p("Text placeholder for link to metadata"),
+      downloadButton(outputId = "downloadPlot", 
+                     label = "Download"),
+      p("Text placeholder"),
     )
   )
 )
 
-### DEFINE SERVE LOGIC ###
+### DEFINE SERVER LOGIC ###
 
 server <- function(input, output){
   
   plot_cell <- reactiveVal()
   
-  observeEvent(input$action, {
+  # visualise from textbox
+  observeEvent(input$action_text, {
 
-    # genes_tidy <- stringi::stri_split(genes, 
-    #                                   ";",
-    #                                   fixed = T,
-    #                                   simplify=T)
+    genes_tidy <- as.vector(stringi::stri_split(input$input_genes_text,
+                                      regex = "\n",
+                                      simplify=T))
     
-    comps <- compartmentData(genes = input$input_genes)
+    comps <- compartmentData(genes = genes_tidy)
 
+    plot_cell(runSubcellulaRvis(comps))
+  }
+  )
+  
+  # Visualise from file
+  observeEvent(input$action_file, {
+    
+    genes_df <- read.csv(input$input_genes_file$datapath,
+                           header = F,
+                           stringsAsFactors = F)
+
+    comps <- compartmentData(genes = genes_df[,1])
+    
     plot_cell(runSubcellulaRvis(comps))
   }
   )
@@ -61,7 +77,7 @@ server <- function(input, output){
         grDevices::png(..., width = width, height = height,
                        res = 300, units = "in")
       }
-      ggsave(file, plot = plotInput(), device = device)
+      ggsave(file, device = device)
     }
   )
   
