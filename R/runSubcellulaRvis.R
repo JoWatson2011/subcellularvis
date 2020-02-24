@@ -1,4 +1,4 @@
-compartmentData <- function(genes){
+compartmentData <- function(genes, bkgdSize = 20367){
   library(GO.db)
   library(org.Hs.eg.db)
   library(dplyr)
@@ -21,23 +21,40 @@ compartmentData <- function(genes){
   
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
-  annots <- AnnotationDbi::select(org.Hs.eg.db,
-                                  keys = genes, columns = "GO",
-                                  keytype = "SYMBOL") %>%
-    filter(ONTOLOGY == "CC") %>%
-    dplyr::select(SYMBOL, GOID = GO) %>%
-    filter(GOID %in% COMPARTMENTS_parent$GOID) %>%
-    merge(COMPARTMENTS_parent, by = "GOID") %>% 
-    group_by(compartment) %>% 
-    summarise(n = n()) %>% 
-    mutate(freq = n/sum(n) * 100) %>% 
-    arrange(desc(freq))
   
-  return(annots)
+  enrichment <- lapply(COMPARTMENTS_parent$GOID, function(x){
+    annots <- AnnotationDbi::select(org.Hs.eg.db,
+                                    keys = x, columns = "SYMBOL",
+                                    keytype = "GO")
+
+    successes.sample <- annots %>% 
+      filter(SYMBOL %in% genes) %>% 
+      nrow() # How many times term 'i' occurred in sample
+    
+    successes.bkgd <- nrow(annots) #How many times term 'i' occured in background
+    
+    failure <- bkgdSize - successes.bkgd  #Number of peptides in background minus the peptides with that term
+    
+    sampleSize <- length(genes)
+    
+    samplep <- phyper(successes.sample-1,
+                            successes.bkgd,
+                            failure,
+                            sampleSize,
+                            lower.tail = F)
+      
+      
+  return(data.frame(GOID = x, p = samplep, 
+                    stringsAsFactors = F))    
+  }) %>% 
+    do.call(rbind, .) %>% 
+    merge(COMPARTMENTS_parent, by = "GOID")
+
+  return(enrichment)
 }
-
-
-runSubcellulaRvis <- function(compartmentData){
+  
+ 
+runSubcellulaRvis <- function(compartmentData, colScheme){
   library(dplyr)
   library(readr)
   library(ggplot2)
@@ -56,14 +73,14 @@ runSubcellulaRvis <- function(compartmentData){
   vis_organelles <- function(compartment, W, H, X, Y, compartments_df = compartmentData){
     
     if(compartment %in% compartments_df$compartment){
-    freq <- compartments_df[compartments_df$compartment == compartment,]$freq
+      p <- compartments_df[compartments_df$compartment == compartment,]$p
     }else{
-      freq <- 0
+      p <- 1
     }
     points <- data.frame(
       c(X, X, X+W, X+W),
       c(Y, Y+H, Y+H, Y),
-      rep(freq, times = 4)
+      rep(p, times = 4)
     )
     colnames(points) <- c(paste0(compartment, "_x"),
                           paste0(compartment, "_y"),
@@ -128,13 +145,17 @@ runSubcellulaRvis <- function(compartmentData){
     annotation_raster(img,
                       xmin=0, xmax=1777.411,
                       ymin=0, ymax= 1621.419) + #size of image
+    scale_fill_gradientn(name = "Enrichment (p-value)",
+                         colors = c("white", "grey", colScheme),
+                         values = scales::rescale(c(1, 0.05, 0)),
+                         guide = "colorbar") +
     theme(line = element_blank(),
           axis.text = element_blank(),
           title = element_blank(),
-          legend.title = element_text(),
-          panel.background = element_blank()
+          panel.background = element_blank(), 
+          legend.title = element_text(size = 6)
     ) +
-    scale_fill_continuous(low="grey", high="#895397", name = "%")
+    guides(fill = guide_colourbar(reverse = TRUE))
   
   return(g)
   
