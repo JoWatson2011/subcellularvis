@@ -1,4 +1,32 @@
 library(shiny)
+library(visNetwork)
+library(igraph)
+library(dplyr)
+library(tidyr)
+simplifyData1 <<- readRDS("data/simplifyData1.rds")
+STRING.expmt.gene <<- readRDS("data/STRINGexpmtgene.rds")
+GOBP <<- list(
+  bg = readRDS("data/GOBP_background.rds"),
+  distr = readRDS("data/GOBPdistr.rds")
+)
+GOCC <<- list(
+  bg = readRDS("data/GOCC_background.rds"),
+  distr = readRDS("data/GOCCdistr.rds")
+)
+GOMF <<- list(
+  bg = readRDS("data/GOMF_background.rds"),
+  distr = readRDS("data/GOMFdistr.rds")
+)
+REACT <<-list(
+  bg = readRDS("data/REACTOME_background.rds"),
+  distr = readRDS("data/REACTdistr.rds")
+)
+databases <- list(
+  GOBP = GOBP,
+  GOCC = GOCC,
+  GOMF = GOMF,
+  REACT = REACT
+)
 source("R/runSubcellulaRvis.R")
 
 ### DEFINE UI FOR APP ###
@@ -21,7 +49,8 @@ ui <- fluidPage(
                            placeholder = ".csv file of genes"),
                  # actionButton(inputId = "action_file",
                  #              label = "From .csv file")
-                 
+                 checkboxInput(inputId = "traffic",
+                               label = "Intersted in trafficking?"),
                  br(),
                  actionButton(inputId = "action_button",
                               label = "Calculate Enrichment & Visualise")
@@ -50,7 +79,7 @@ ui <- fluidPage(
                                 label = "Download"))
       ),
 
-      p("Text placeholder"),
+      p("Text placeholder")
     )
   )
 )
@@ -76,9 +105,9 @@ server <- function(input, output){
     }
     
     withProgress(message = "calculating", value = 15, {
-      comps <<- compartmentData(genes = genes_tidy)
+      comps <<- compartmentData(genes = genes_tidy, trafficking = input$traffic)
       
-      plot_cell(runSubcellulaRvis(comps, colScheme = input$colScheme))
+      plot_cell(runSubcellulaRvis(comps, colScheme = input$colScheme, trafficking = input$traffic))
       
     })
     
