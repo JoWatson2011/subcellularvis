@@ -4,6 +4,11 @@ library(dplyr)
 library(tidyr)
 child <- as.list(GOCCOFFSPRING)
 
+### #####################################
+###"Top level"/summarised annotations,
+### used for compartments visualisation
+#########################################
+#Trafficking
 COMPARTMENTS_traffic <- data.frame(compartment = c("Cytoplasm", "Plasma membrane", 
                                                   "Intracellular vesicle", "Lysosome",
                                                   "Recycling Endosome", "Endolysosome",
@@ -36,7 +41,8 @@ traffic_annots <- AnnotationDbi::select(org.Hs.eg.db,
 
 
 saveRDS(traffic_annots, "data/traffic_annots.rds")
-  
+
+### Whole cell 
 COMPARTMENTS_parent <- data.frame(compartment = c("Nucleus", "Cytoplasm", "Cytoskeleton",
                                                   "Peroxisome", "Vacuole", "Endoplasmic reticulum",
                                                   "Golgi apparatus", "Plasma membrane", "Endosome",
@@ -72,3 +78,59 @@ annots <- AnnotationDbi::select(org.Hs.eg.db,
   na.omit()
 
 saveRDS(annots, "data/annots.rds")
+
+########################################
+### Detailed annotations
+###
+#########################################
+
+#Trafficking
+traffic_subannots_terms <- AnnotationDbi::select(
+  GO.db,
+  COMPARTMENTS_traffic_offspring$ID,
+  "TERM",
+  "GOID"
+) %>% 
+  distinct() %>% 
+  left_join(COMPARTMENTS_traffic_offspring, by = c("GOID"="ID")) %>% 
+  distinct()
+
+traffic_subannots_genes <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  traffic_subannots_terms$GOID,
+  "SYMBOL",
+  "GO"
+) %>% 
+  left_join(subannots_terms, by = c("GO" = "GOID")) %>% 
+  distinct() %>% 
+  dplyr::select(GOID = GO, SYMBOL, 
+                compartment = TERM, group = compartment) 
+
+
+saveRDS(traffic_subannots_genes, "data/traffic_subAnnots.rds")
+
+# Whole cell
+subannots_terms <- AnnotationDbi::select(
+  GO.db,
+  COMPARTMENTS_offspring$ID,
+  "TERM",
+  "GOID"
+) %>% 
+  distinct() %>% 
+  left_join(COMPARTMENTS_offspring, by = c("GOID"="ID")) %>% 
+  distinct()
+
+subannots_genes <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  subannots_terms$GOID,
+  "SYMBOL",
+  "GO"
+) %>% 
+  left_join(subannots_terms, by = c("GO" = "GOID")) %>% 
+  distinct() %>% 
+  dplyr::select(GOID = GO, SYMBOL, 
+                compartment = TERM, group = compartment) 
+
+
+saveRDS(subannots_genes, "data/subAnnots.rds")
+

@@ -1,0 +1,29 @@
+---
+output: word_document
+params:
+  date: NA
+  comps: NA
+  genes: NA
+---
+```{r, setup, include=FALSE}
+# set this option in the first code chunk in the document
+knitr::opts_chunk$set(echo = F, results = "asis")
+```
+
+```{r, results}
+cat("Analysis performed on", params$date, "using SubCellularVis tool")
+```
+
+"Source code available at: https://github.com/JoWatson2011/shiny_subcellularvis"
+
+
+Enrichment FDR:
+```{r}
+knitr::kable(params$comps)
+```
+
+Gene list analysed:
+```{r}
+cat(params$genes, sep = "\n")
+```
+
