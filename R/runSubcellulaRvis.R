@@ -3,33 +3,41 @@
 #' @param genes input genes (HGNC symbol) as character vector
 #' @param bkgdSize size of background proteome. Default = 20367, HeLa proteome
 #' @param trafficking Logical; Calculate enrichment within endolysosome system?
+#' @param subAnnots Logical; Calculate enrichment on all terms, not summarised
+#' @param organism One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"
 #'
+#'
+#' @importFrom dplyr mutate filter arrange bind_rows distinct group_by summarise
+#' @importFrom stats phyper
+#' @importFrom magrittr `%>%`
 #'
 #' @return
 #' @export
 #'
 #' @examples
 #' 
-compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots = F){
-  library(dplyr)
+compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots = F,
+                            organism = c("Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus")){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
   
+  path <- paste0("data/", organism[1], "/")
+  
   if(subAnnots){
     if(trafficking){
-      COMPARTMENTS_parent <- readRDS("data/traffic_subAnnots.rds") %>% 
-        mutate(calc = ifelse(SYMBOL %in% genes, T, F))
+      COMPARTMENTS_parent <- readRDS(paste0(path, "traffic_subAnnots.rds")) %>% 
+        dplyr::mutate(calc = ifelse(SYMBOL %in% genes, T, F))
     }else{
-      COMPARTMENTS_parent <- readRDS("data/subAnnots.rds") %>% 
-        mutate(calc = ifelse(SYMBOL %in% genes, T, F))
+      COMPARTMENTS_parent <- readRDS(paste0(path, "subAnnots.rds")) %>% 
+        dplyr::mutate(calc = ifelse(SYMBOL %in% genes, T, F))
     }
   }else{
     if(trafficking){
-      COMPARTMENTS_parent <- readRDS("data/traffic_annots.rds") %>% 
-        mutate(calc = T)
+      COMPARTMENTS_parent <- readRDS(paste0(path,"traffic_annots.rds")) %>% 
+        dplyr::mutate(calc = T)
     }else{
-      COMPARTMENTS_parent <- readRDS("data/annots.rds") %>% 
-        mutate(calc = T)
+      COMPARTMENTS_parent <- readRDS(paste0(path,"annots.rds")) %>% 
+        dplyr::mutate(calc = T)
     }
   }
   
@@ -41,13 +49,13 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
       COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc]),
     function(x){
       successes.sample <- COMPARTMENTS_parent %>% 
-        filter(compartment == x) %>% 
-        filter(SYMBOL %in% genes) %>% 
+        dplyr::filter(compartment == x) %>% 
+        dplyr::filter(SYMBOL %in% genes) %>% 
         unique() %>% 
         nrow() # How many times term 'i' occurred in sample
       
       successes.bkgd <- COMPARTMENTS_parent %>% 
-        filter(compartment == x) %>% 
+        dplyr::filter(compartment == x) %>% 
         unique() %>% 
         nrow()    #How many times term 'i' occured in background
       
@@ -55,19 +63,28 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
       
       sampleSize <- length(genes)
       
-      samplep <- phyper(successes.sample,
+      samplep <- stats::phyper(successes.sample,
                         successes.bkgd,
                         failure,
                         sampleSize,
                         lower.tail = F)
       
-      return(data.frame(compartment = x,
-                   p = samplep))  
+      symbols <- COMPARTMENTS_parent %>% 
+        filter(compartment == x) %>% 
+        filter(SYMBOL %in% genes) %>% 
+        dplyr::select(SYMBOL) %>% 
+        unique()
+      
+      return(data.frame(
+        compartment = x,
+        symbol = paste(symbols$SYMBOL, collapse = ","),
+        p = samplep)
+      )  
     }) %>% 
-    bind_rows() %>% 
-    mutate(p = p.adjust(p),
-           `p < 0.05` = ifelse( p < 0.05, T, F)) %>% 
-    arrange(p)
+    dplyr::bind_rows() %>% 
+    dplyr::mutate(FDR = p.adjust(p),
+           `FDR < 0.05` = ifelse( p < 0.05, T, F)) %>% 
+    dplyr::arrange(FDR)
     
   
   if(subAnnots){
@@ -76,10 +93,11 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
                 COMPARTMENTS_parent[,c("compartment", "group")], 
                 by = "compartment",
             all.y = F) %>% 
-      distinct() %>% 
-      group_by(compartment, p, `p < 0.05`) %>% 
-      summarise(group = paste(group, collapse = ", "), .groups = "keep") %>% 
-      arrange(p)
+      dplyr::distinct() %>% 
+      dplyr::group_by(compartment, FDR, `FDR < 0.05`) %>% 
+      dplyr::summarise(group = paste(group, collapse = ", "), 
+                       .groups = "keep") %>% 
+      dplyr::arrange(FDR)
   }
   
   return(enrichment)
@@ -94,54 +112,38 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
 #' @param trafficking Logical; Visualise endolysosome system? 
 #' @param text_size Size of text if using 
 #' @param legend Logical; include legend?
-#' @param legend.pos passes to ggplot::theme(legend.postion = legend.pos). One of "right", "left", "bottom", "top"
-
+#' @param legend.pos passes to ggplot2::theme(legend.postion = legend.pos). One of "right", "left", "bottom", "top"
+#'
+#' @importFrom ggplot2 ggplot aes geom_polygon annotation_raster scale_fill_gradientn theme element_blank element_text margin guides geom_label geom_text
+#' @importFrom grid unit
+#' @importFrom magick image_read 
+#' 
 #' @return
 #' @export
 #'
 #' @examples
 runSubcellulaRvis <- function(compsDat, colScheme_low, 
                               colScheme_high, trafficking = F, 
-                              text_size = 6,
+                              text_size = 2,
                               legend = T,
                               legend.pos = "right",
                               labels = T){
 
-  library(ggplot2)
-  library(png)
+
 
   vis_map <- function(W, H){
-    
-    # points <- data.frame(
-    #   comparment = "img",
-    #   x = c(0, 0, W, W),
-    #   y = c(0, H, H, 0),
-    #   p = rep(p, times = 4)
-    # )
+
     points <- data.frame(
       c(0, 0, W, W),
       c(0, H, H, 0)
     )
     colnames(points) <- c("img_x", "img_y")
-    
+
     return(points)
   }
-  
+
   vis_organelles <- function(compartment, W, H, X, Y, compartments_df = compsDat){
-    
-  #  if(compartment %in% compartments_df$compartment){
-      FDR <- compartments_df[compartments_df$compartment == compartment,]$p
- #   }else{
- #     p <- 1
- #   }
-      
-      # points <- data.frame(
-      #   comparment = rep(compartment, times = 4),
-      #   x = c(X, X, X+W, X+W),
-      #   y = c(Y, Y+H, Y+H, Y),
-      #   p = rep(p, times = 4)
-      # )
-      
+    FDR <- compartments_df[compartments_df$compartment == compartment,]$FDR
 
     points <- data.frame(
       c(X, X, X+W, X+W),
@@ -155,9 +157,9 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
     return(points)
   }
   
+  
   if(trafficking){
     df<- cbind(
-      vis_map(210.4, 189.85),
       vis_organelles(compartment = "Plasma membrane", W = 210.4, H = 15.663, X = 0, Y = 164.278),
       vis_organelles("Intracellular vesicle", 19.082, 18.552, 129.9, 135.2),
       vis_organelles("Lysosome", 39.5, 40.46, 149.186, 15.059),
@@ -166,7 +168,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Early Endosome", 75.373,  87.449, 17.575, 61.062)
     )
 
-    img <- png::readPNG("data/endosomalCell.png")
+    img <- magick::image_read("data/endosomalCell.png")
     
     g <- ggplot2::ggplot(df
       ) +
@@ -194,8 +196,6 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
     
   }else{
     df<- cbind(
-   # df<- rbind(
-      vis_map(1779.819, 1622.419),
       vis_organelles(compartment = "Cytoplasm", W = 1467, H = 1325, X = 153.5, Y = 1622.4 - 1467.5),
       vis_organelles("Nucleus", 431.7, 397, 867, 1622.4 - 1365.7),
       vis_organelles("Cytoskeleton", 52, 1255.5, 1510.5, 1622.4 - 1429.5),
@@ -210,24 +210,9 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Endoplasmic reticulum", 532.2, 284.2, 814.6, 696.72),
       vis_organelles("Golgi apparatus", 479.7, 208.4, 836.5, 1083.75)
     ) 
-    
-    # df <- lapply(compsDat$compartment, function(i){
-    #   if(any(grepl(i, colnames(df)))){
-    #     res <- df %>% 
-    #       dplyr::select(grep(i, colnames(.))) %>% 
-    #       select("x" = 1, "y" = 2, "p" = 3) %>% 
-    #       mutate(comp = i) 
-    #   } else {
-    #     res <- data.frame()
-    #   }
-    #   return(res)
-    # }) %>% 
-    #   bind_rows() %>% 
-    #   distinct()
-    
-    
-    img <- png::readPNG("data/CELL.png")
-    
+
+    img <- magick::image_read("data/CELL.png")
+  
     g <-  ggplot2::ggplot(df) +
       ggplot2::geom_polygon(ggplot2::aes(x = `Extracellular region_x`,
                        y = `Extracellular region_y`,
@@ -318,7 +303,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   
     if(legend == F){
       g <- g +
-        guides(fill = "none")
+        ggplot2::guides(fill = "none")
     }
     
     if(labels == T){
@@ -347,10 +332,13 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       
       g <-g + 
         ggplot2::geom_label(data = labels_df[labels_df$rect == T,],
-                            aes(x = x, y = y, label = label), alpha = 0.5, color = NA) +
+                            ggplot2::aes(x = x, y = y, label = label),
+                            alpha = 0.5, color = NA,
+                            size = text_size) +
         ggplot2::geom_text(data = labels_df, 
-                           aes(x=x,y=y,label=label, angle = angle),
-                           fontface = "bold"
+                           ggplot2::aes(x=x,y=y,label=label, angle = angle),
+                           fontface = "bold",
+                           size = text_size
         )
     }
 
