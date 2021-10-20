@@ -1,46 +1,46 @@
 #' Calculate enrichment of subcellular compartment
 #'
 #' @param genes input genes (HGNC symbol) as character vector
-#' @param bkgdSize size of background proteome. Default = 20367, HeLa proteome
+#' @param bkgd background population. Defaults to size of species library
 #' @param trafficking Logical; Calculate enrichment within endolysosome system?
 #' @param subAnnots Logical; Calculate enrichment on all terms, not summarised
 #' @param organism One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"
 #'
 #'
-#' @importFrom dplyr mutate filter arrange bind_rows distinct group_by summarise
-#' @importFrom stats phyper
+#' @importFrom dplyr mutate filter select arrange bind_rows distinct group_by summarise
+#' @importFrom stats phyper p.adjust
+#' @importFrom rlang .data
 #' @importFrom magrittr `%>%`
 #'
 #' @return
 #' @export
-#'
-#' @examples
-#' 
-compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots = F,
-                            organism = c("Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus")){
+
+
+compartmentData <- function(genes, bkgd = NULL,
+                            trafficking = F, subAnnots = F,
+                            organism = c("Human", "Mouse", 
+                                         "Drosophila", "Yeast", 
+                                         "Rat", "Xenopus")){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
   
-  path <- paste0("data/", organism[1], "/")
+  dat <- paste0(organism[1], 
+                ifelse(trafficking, "_traffic_", "_"),
+                ifelse(subAnnots, "subAnnots", "annots"))
+  COMPARTMENTS_parent <- eval(as.name(dat))
   
-  if(subAnnots){
-    if(trafficking){
-      COMPARTMENTS_parent <- readRDS(paste0(path, "traffic_subAnnots.rds")) %>% 
-        dplyr::mutate(calc = ifelse(SYMBOL %in% genes, T, F))
-    }else{
-      COMPARTMENTS_parent <- readRDS(paste0(path, "subAnnots.rds")) %>% 
-        dplyr::mutate(calc = ifelse(SYMBOL %in% genes, T, F))
-    }
-  }else{
-    if(trafficking){
-      COMPARTMENTS_parent <- readRDS(paste0(path,"traffic_annots.rds")) %>% 
-        dplyr::mutate(calc = T)
-    }else{
-      COMPARTMENTS_parent <- readRDS(paste0(path,"annots.rds")) %>% 
-        dplyr::mutate(calc = T)
-    }
+  if(is.null(bkgd)){
+    bkgd_size  <-  nrow(COMPARTMENTS_parent)
+  } else {
+    COMPARTMENTS_parent <- dplyr::filter(COMPARTMENTS_parent, .data$SYMBOL %in% bkgd)
+    bkgd_size  <-  length(bkgd)
   }
   
+  if(subAnnots == T) {
+    COMPARTMENTS_parent$calc <- ifelse(COMPARTMENTS_parent$SYMBOL %in% genes, T, F)
+  } else {
+    COMPARTMENTS_parent$calc <- T
+  }
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
   
@@ -49,55 +49,61 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
       COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc]),
     function(x){
       successes.sample <- COMPARTMENTS_parent %>% 
-        dplyr::filter(compartment == x) %>% 
-        dplyr::filter(SYMBOL %in% genes) %>% 
+        dplyr::filter(.data$compartment == x) %>% 
+        dplyr::filter(.data$SYMBOL %in% genes) %>% 
         unique() %>% 
         nrow() # How many times term 'i' occurred in sample
       
       successes.bkgd <- COMPARTMENTS_parent %>% 
-        dplyr::filter(compartment == x) %>% 
+        dplyr::filter(.data$compartment == x) %>% 
         unique() %>% 
-        nrow()    #How many times term 'i' occured in background
+        nrow()    #How many times term 'i' occurred in background
       
-      failure <- bkgdSize - successes.bkgd  #Number of peptides in background minus the peptides with that term
+      failure <- bkgd_size - successes.bkgd  #Number of peptides in background minus the peptides with that term
       
       sampleSize <- length(genes)
       
       samplep <- stats::phyper(successes.sample,
-                        successes.bkgd,
-                        failure,
-                        sampleSize,
-                        lower.tail = F)
+                               successes.bkgd,
+                               failure,
+                               sampleSize,
+                               lower.tail = F)
       
       symbols <- COMPARTMENTS_parent %>% 
-        filter(compartment == x) %>% 
-        filter(SYMBOL %in% genes) %>% 
-        dplyr::select(SYMBOL) %>% 
+        dplyr::filter(.data$compartment == x) %>% 
+        dplyr::filter(.data$SYMBOL %in% genes) %>% 
+        dplyr::select(.data$SYMBOL) %>% 
         unique()
       
-      return(data.frame(
-        compartment = x,
-        symbol = paste(symbols$SYMBOL, collapse = ","),
-        p = samplep)
+      return(
+        data.frame(
+          Compartment = x,
+          Symbol = paste(symbols$SYMBOL, collapse = ","),
+          n = length(unique(symbols$SYMBOL)),
+          p = samplep)
       )  
     }) %>% 
     dplyr::bind_rows() %>% 
-    dplyr::mutate(FDR = p.adjust(p),
-           `FDR < 0.05` = ifelse( p < 0.05, T, F)) %>% 
-    dplyr::arrange(FDR)
-    
+    dplyr::mutate(FDR = p.adjust(.data$p),
+                  `FDR < 0.05` = ifelse(.data$FDR < 0.05, T, F)
+    ) %>% 
+    dplyr::arrange(.data$FDR) %>% 
+    dplyr::select(.data$Compartment, .data$p,
+           .data$FDR, .data$`FDR < 0.05`,
+           .data$n, .data$Symbol)
+  
   
   if(subAnnots){
     enrichment <- 
       merge(enrichment, 
-                COMPARTMENTS_parent[,c("compartment", "group")], 
-                by = "compartment",
+            COMPARTMENTS_parent[,c("compartment", "group")], 
+            by = "compartment",
             all.y = F) %>% 
       dplyr::distinct() %>% 
-      dplyr::group_by(compartment, FDR, `FDR < 0.05`) %>% 
-      dplyr::summarise(group = paste(group, collapse = ", "), 
+      dplyr::group_by(.data$compartment, .data$FDR, .data$`FDR < 0.05`) %>% 
+      dplyr::summarise(group = paste(.data$group, collapse = ", "), 
                        .groups = "keep") %>% 
-      dplyr::arrange(FDR)
+      dplyr::arrange(.data$FDR)
   }
   
   return(enrichment)
@@ -113,38 +119,30 @@ compartmentData <- function(genes, bkgdSize = 20367, trafficking = F, subAnnots 
 #' @param text_size Size of text if using 
 #' @param legend Logical; include legend?
 #' @param legend.pos passes to ggplot2::theme(legend.postion = legend.pos). One of "right", "left", "bottom", "top"
+#' @param labels show labels on plot? Default is TRUE
 #'
 #' @importFrom ggplot2 ggplot aes geom_polygon annotation_raster scale_fill_gradientn theme element_blank element_text margin guides geom_label geom_text
 #' @importFrom grid unit
+#' @importFrom rlang .data
 #' @importFrom magick image_read 
 #' 
-#' @return
+#' @return ggplot2 object
 #' @export
-#'
-#' @examples
 runSubcellulaRvis <- function(compsDat, colScheme_low, 
                               colScheme_high, trafficking = F, 
                               text_size = 2,
                               legend = T,
                               legend.pos = "right",
                               labels = T){
-
-
-
-  vis_map <- function(W, H){
-
-    points <- data.frame(
-      c(0, 0, W, W),
-      c(0, H, H, 0)
-    )
-    colnames(points) <- c("img_x", "img_y")
-
-    return(points)
-  }
-
+  
   vis_organelles <- function(compartment, W, H, X, Y, compartments_df = compsDat){
-    FDR <- compartments_df[compartments_df$compartment == compartment,]$FDR
-
+    
+    FDR <- compartments_df[compartments_df$Compartment == compartment,]$FDR
+    
+    if(length(FDR) == 0){
+      FDR <-  1
+    }
+    
     points <- data.frame(
       c(X, X, X+W, X+W),
       c(Y, Y+H, Y+H, Y),
@@ -167,29 +165,31 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Late Endosome", 92.709, 42.438, 34.619,  5.515),
       vis_organelles("Early Endosome", 75.373,  87.449, 17.575, 61.062)
     )
-
-    img <- magick::image_read("data/endosomalCell.png")
+    
+    img <- magick::image_read(system.file("extdata",
+                                          "endosomalCell_scaled.png",
+                                          package = "subcellularvis"))
     
     g <- ggplot2::ggplot(df
-      ) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Plasma membrane_x`,
-                                         y = `Plasma membrane_y`,
-                                         fill = `Plasma membrane`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Intracellular vesicle_x`,
-                                         y = `Intracellular vesicle_y`,
-                                         fill = `Intracellular vesicle`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Lysosome_x`,
-                                         y = `Lysosome_y`,
-                                         fill = `Lysosome`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Recycling Endosome_x`,
-                                         y = `Recycling Endosome_y`,
-                                         fill = `Recycling Endosome`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Late Endosome_x`,
-                                         y = `Late Endosome_y`,
-                                         fill = `Late Endosome`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Early Endosome_x`,
-                                         y = `Early Endosome_y`,
-                                         fill = `Early Endosome`)) +
+    ) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Plasma membrane_x`,
+                                         y = .data$`Plasma membrane_y`,
+                                         fill = .data$`Plasma membrane`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Intracellular vesicle_x`,
+                                         y = .data$`Intracellular vesicle_y`,
+                                         fill = .data$`Intracellular vesicle`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Lysosome_x`,
+                                         y = .data$`Lysosome_y`,
+                                         fill = .data$`Lysosome`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Recycling Endosome_x`,
+                                         y = .data$`Recycling Endosome_y`,
+                                         fill = .data$`Recycling Endosome`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Late Endosome_x`,
+                                         y = .data$`Late Endosome_y`,
+                                         fill = .data$`Late Endosome`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Early Endosome_x`,
+                                         y = .data$`Early Endosome_y`,
+                                         fill = .data$`Early Endosome`)) +
       ggplot2::annotation_raster(img,
                                  xmin=0, xmax=210.4,
                                  ymin=0, ymax= 189.85)   #size of image
@@ -210,139 +210,148 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Endoplasmic reticulum", 532.2, 284.2, 814.6, 696.72),
       vis_organelles("Golgi apparatus", 479.7, 208.4, 836.5, 1083.75)
     ) 
-
-    img <- magick::image_read("data/CELL.png")
-  
+    
+    img <- magick::image_read(system.file("extdata",
+                                          "CELL_scaled.png",
+                                          package = "subcellularvis")
+                              )
+    
     g <-  ggplot2::ggplot(df) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Extracellular region_x`,
-                       y = `Extracellular region_y`,
-                       fill = `Extracellular region`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Plasma membrane_x`,
-                       y = `Plasma membrane_y`,
-                       fill = `Plasma membrane`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Cytoplasm_x,
-                       y = Cytoplasm_y,
-                       fill = Cytoplasm)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Nucleus_x,
-                       y = Nucleus_y,
-                       fill = Nucleus)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Cytoskeleton_x,
-                       y = Cytoskeleton_y,
-                       fill = Cytoskeleton)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Mitochondrion_x,
-                       y = Mitochondrion_y,
-                       fill = Mitochondrion)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Endosome_x,
-                       y = Endosome_y,
-                       fill = Endosome)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Intracellular vesicle_x`,
-                       y = `Intracellular vesicle_y`,
-                       fill = `Intracellular vesicle`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Ribosome_x,
-                       y = Ribosome_y,
-                       fill = Ribosome)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Lysosome_x,
-                       y = Lysosome_y,
-                       fill = Lysosome)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = Peroxisome_x,
-                       y = Peroxisome_y,
-                       fill = Peroxisome)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Endoplasmic reticulum_x`,
-                       y = `Endoplasmic reticulum_y`,
-                       fill = `Endoplasmic reticulum`)) +
-      ggplot2::geom_polygon(ggplot2::aes(x = `Golgi apparatus_x`,
-                       y = `Golgi apparatus_y`,
-                       fill = `Golgi apparatus`))  +
-       ggplot2::annotation_raster(img,
-                         xmin=0, xmax=1777.411,
-                         ymin=0, ymax= 1621.419)   #size of image
-   }
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Extracellular region_x`,
+                                         y = .data$`Extracellular region_y`,
+                                         fill = .data$`Extracellular region`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Plasma membrane_x`,
+                                         y = .data$`Plasma membrane_y`,
+                                         fill = .data$`Plasma membrane`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Cytoplasm_x,
+                                         y = .data$Cytoplasm_y,
+                                         fill = .data$Cytoplasm)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Nucleus_x,
+                                         y = .data$Nucleus_y,
+                                         fill = .data$Nucleus)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Cytoskeleton_x,
+                                         y = .data$Cytoskeleton_y,
+                                         fill = .data$Cytoskeleton)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Mitochondrion_x,
+                                         y = .data$Mitochondrion_y,
+                                         fill = .data$Mitochondrion)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Endosome_x,
+                                         y = .data$Endosome_y,
+                                         fill = .data$Endosome)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Intracellular vesicle_x`,
+                                         y = .data$`Intracellular vesicle_y`,
+                                         fill = .data$`Intracellular vesicle`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Ribosome_x,
+                                         y = .data$Ribosome_y,
+                                         fill = .data$Ribosome)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Lysosome_x,
+                                         y = .data$Lysosome_y,
+                                         fill = .data$Lysosome)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$Peroxisome_x,
+                                         y = .data$Peroxisome_y,
+                                         fill = .data$Peroxisome)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Endoplasmic reticulum_x`,
+                                         y = .data$`Endoplasmic reticulum_y`,
+                                         fill = .data$`Endoplasmic reticulum`)) +
+      ggplot2::geom_polygon(ggplot2::aes(x = .data$`Golgi apparatus_x`,
+                                         y = .data$`Golgi apparatus_y`,
+                                         fill = .data$`Golgi apparatus`))  +
+      ggplot2::annotation_raster(img,
+                                 xmin=0, xmax=1777.411,
+                                 ymin=0, ymax= 1621.419)   #size of image
+  }
   
+  g <- g +
+    ggplot2::scale_fill_gradientn(name = "FDR",
+                                  breaks = seq(0, max(compsDat$FDR[compsDat$FDR <= 0.05]), max(compsDat$FDR[compsDat$FDR <= 0.05])/5), 
+                                  limits = c(0, max(compsDat$FDR[compsDat$FDR <= 0.05])),
+                                  colors = c(colScheme_low, colScheme_high),
+                                  guide = "colorbar",
+                                  na.value = "white")+
+    ggplot2::theme(line = ggplot2::element_blank(),
+                   axis.text = ggplot2::element_blank(),
+                   axis.title = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   axis.ticks.length = grid::unit(0, "pt"),
+                   axis.line = ggplot2::element_blank(),
+                   title = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(), 
+                   panel.border= ggplot2::element_blank(), 
+                   panel.spacing = grid::unit(0, "cm"),
+                   panel.grid.major= ggplot2::element_blank(),
+                   panel.grid.minor= ggplot2::element_blank(),
+                   legend.title = ggplot2::element_text(size = text_size+5),
+                   legend.text = ggplot2::element_text(size = text_size+5,
+                                                       angle = ifelse(
+                                                         legend.pos %in% 
+                                                           c("right", "left"),
+                                                         0,
+                                                         45),
+                                              hjust = ifelse(legend.pos %in% c("right", "left"),
+                                                             0,
+                                                             1)),
+                   # legend.key.height = grid::unit(0.1, "cm"),
+                   # legend.key.width = grid::unit(ifelse(legend.pos %in% c("right", "left"),
+                   #                                0.1,
+                   #                                0.5), 
+                   #                         "cm"),
+                   legend.margin = ggplot2::margin(0, 0, 0, 0, "mm"),
+                   legend.box.background = ggplot2::element_blank(),
+                   legend.box.spacing = ggplot2::margin(0, 0, 0, 0, "mm"),
+                   legend.position = legend.pos,
+                   legend.direction = ifelse(legend.pos %in% c("right", "left"), "vertical", "horizontal"),
+                   plot.margin = ggplot2::margin(0, 0, 0, 0, "mm"),
+                   plot.background = ggplot2::element_blank()
+    ) 
+  
+  
+  
+  if(legend == F){
     g <- g +
-      ggplot2::scale_fill_gradientn(name = "FDR",
-                           breaks = seq(0, 0.05, 0.01), 
-                           limits = c(0, 0.05),
-                           colors = c(colScheme_low, colScheme_high),
-                           guide = "colorbar",
-                           na.value = "white")+
-      ggplot2::theme(line = element_blank(),
-            axis.text = element_blank(),
-            axis.title = element_blank(),
-            axis.ticks = element_blank(),
-            axis.ticks.length = unit(0, "pt"),
-            axis.line = element_blank(),
-            title = element_blank(),
-            panel.background = element_blank(), 
-            panel.border=element_blank(), 
-            panel.spacing = unit(0, "cm"),
-            panel.grid.major=element_blank(),
-            panel.grid.minor=element_blank(),
-            legend.title = element_text(size = text_size),
-            legend.text = element_text(size = text_size,
-                                       angle = ifelse(legend.pos %in% c("right", "left"),
-                                                      0,
-                                                      45),
-                                       hjust = ifelse(legend.pos %in% c("right", "left"),
-                                                      0,
-                                                      1)),
-            legend.key.height = unit(0.1, "cm"),
-            legend.key.width = unit(ifelse(legend.pos %in% c("right", "left"),
-                                           0.1,
-                                           0.5), 
-                                    "cm"),
-            legend.margin = margin(0, 0, 0, 0, "mm"),
-            legend.box.background = element_blank(),
-            legend.box.spacing = margin(0, 0, 0, 0, "mm"),
-            legend.position = legend.pos,
-            legend.direction = ifelse(legend.pos %in% c("right", "left"), "vertical", "horizontal"),
-            plot.margin = margin(0, 0, 0, 0, "mm"),
-            plot.background = element_blank()
-      ) 
-    
-    
+      ggplot2::guides(fill = "none")
+  }
   
-    if(legend == F){
-      g <- g +
-        ggplot2::guides(fill = "none")
+  if(labels == T){
+    if(trafficking){
+      labels_df <-  data.frame(
+        label = c("Early Endosome", "Late Endosome",
+                  "Vesicle", "Recycling Endosome",
+                  "Lysosome", "Plasma Membrane"),
+        x = c(55, 80, 140, 155, 170, 105),
+        y = c(110, 25, 145, 105, 35, 170),
+        angle = c(rep(0, 6))
+      )
+    }else{
+      labels_df <-  data.frame(
+        label = c("Vesicle", "Endosomal system", "Lysosome",
+                  "Peroxisome", "Mitochondria", "Ribosome",
+                  "Golgi apparatus", "Endoplasmic reticulum", 
+                  "Nucleus", "Extracellular region", "Plasma membrane", 
+                  "Cytosol", "Cytoskeleton"),
+        x = c(760, 500, 350, 650, 375, 645, 1075, 1075, 1075, 200, 320, 450, 1470),
+        y = c(1400, 1200, 800, 760, 520, 375, 1200, 865, 450, 40, 100, 168, 1200),
+        rect = c(F, T, T, T, T, F, T, T, T, F, F, F, F),
+        angle = c(rep(0, 12), 90)
+      )
     }
     
-    if(labels == T){
-      if(trafficking){
-        labels_df <-  data.frame(
-          label = c("Early Endosome", "Late Endosome",
-                    "Vesicle", "Recycling Endosome",
-                    "Lysosome", "Plasma Membrane"),
-          x = c(55, 80, 140, 155, 170, 105),
-          y = c(110, 25, 145, 105, 35, 170),
-          angle = c(rep(0, 6))
-        )
-      }else{
-        labels_df <-  data.frame(
-          label = c("Vesicle", "Endosomal system", "Lysosome",
-                    "Peroxisome", "Mitochondria", "Ribosome",
-                    "Golgi apparatus", "Endoplasmic reticulum", 
-                    "Nucleus", "Extracellular region", "Plasma membrane", 
-                    "Cytosol", "Cytoskeleton"),
-          x = c(760, 500, 350, 650, 375, 645, 1075, 1075, 1075, 200, 320, 450, 1470),
-          y = c(1400, 1200, 800, 760, 520, 375, 1200, 865, 450, 40, 100, 168, 1200),
-          rect = c(F, T, T, T, T, F, T, T, T, F, F, F, F),
-          angle = c(rep(0, 12), 90)
-        )
-      }
-      
-      g <-g + 
-        ggplot2::geom_label(data = labels_df[labels_df$rect == T,],
-                            ggplot2::aes(x = x, y = y, label = label),
-                            alpha = 0.5, color = NA,
-                            size = text_size) +
-        ggplot2::geom_text(data = labels_df, 
-                           ggplot2::aes(x=x,y=y,label=label, angle = angle),
-                           fontface = "bold",
-                           size = text_size
-        )
-    }
-
+    g <- g + 
+      ggplot2::geom_label(data = labels_df[labels_df$rect == T,],
+                          ggplot2::aes(x = .data$x, 
+                                       y = .data$y, 
+                                       label = .data$label),
+                          alpha = 0.5, color = NA,
+                          size = text_size) +
+      ggplot2::geom_text(data = labels_df, 
+                         ggplot2::aes(x = .data$x,
+                                      y = .data$y,
+                                      label = .data$label,
+                                      angle = .data$angle),
+                         fontface = "bold",
+                         size = text_size
+      )
+  }
+  
   return(g)
   
 }
-

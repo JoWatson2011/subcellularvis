@@ -1,0 +1,32 @@
+Package: subcellularvis
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Jo",
+           family = "Watson",
+           role = c("aut", "cre"),
+           email = "joanne.watson@manchester.ac.uk",
+           comment = c(ORCID = "0000-0002-7754-276X"))
+Description: What the package does (one paragraph).
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    colourpicker,
+    dplyr,
+    ggplot2,
+    grid,
+    htmltools,
+    magick,
+    magrittr,
+    plotly,
+    rlang,
+    shiny,
+    shinythemes,
+    stats,
+    stringi,
+    utils
+Depends: 
+    R (>= 2.10)
