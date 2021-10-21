@@ -13,7 +13,7 @@
 #' @importFrom plotly plotlyOutput renderPlotly ggplotly
 #' @importFrom stringi stri_split
 #'
-#' @return
+#' @return Shiny App
 #' @export
  
 subcellularapp <- function(...){
@@ -61,7 +61,15 @@ subcellularapp <- function(...){
         htmltools::br(),
         shiny::actionButton(inputId = "action_button",
                             label = "Calculate Enrichment & Visualise"),
-        shiny::textOutput("checkInput")
+        shiny::textOutput("checkInputEmpty"),
+        tags$head(tags$style("#checkInputEmpty{color: red;
+                                  }"
+        )),
+        shiny::textOutput("checkInputLength"),
+        tags$head(tags$style("#checkInputLength{color: red;
+                                  }"
+        )
+      ),
       ),
       
       shiny::mainPanel(
@@ -84,6 +92,15 @@ subcellularapp <- function(...){
           ),
           
           shiny::tabPanel("Plot", 
+                          shiny::fluidRow(
+                            shiny::column(width = 6,
+                                          textOutput("checkGenesMap3"),
+                                          tags$head(tags$style("#checkGenesMap3{color: red;
+                                  }"
+                                          )
+                                          )
+                            )
+                          ),
                           shiny::fluidRow(
                             shiny::column(width = 12,
                                           plotly::plotlyOutput(outputId = "plot_cell",
@@ -131,7 +148,16 @@ subcellularapp <- function(...){
                             )
                           ),
           ),
-          shiny::tabPanel("Table", 
+          shiny::tabPanel("Table",
+                          shiny::fluidRow(
+                            shiny::column(width = 6,
+                                          textOutput("checkGenesMap1"),
+                                          tags$head(tags$style("#checkGenesMap1{color: red;
+                                  }"
+                                          )
+                                          )
+                            )
+                          ),
                           shiny::fluidRow(width = 6,
                                           shiny::tableOutput(outputId = "compartment_df")
                           ),
@@ -151,7 +177,14 @@ subcellularapp <- function(...){
           shiny::tabPanel(
             "Full enrichment",
             htmltools::br(),
-            
+            shiny::fluidRow(
+              shiny::column(width = 6,
+                            textOutput("checkGenesMap2"),
+                            tags$head(tags$style("#checkGenesMap2{color: red;
+                                  }"
+                            )
+                            ))
+            ),
             shiny::fluidRow(
               shiny::column(width = 6,
                             shiny::tableOutput(outputId = "fullEnrichment_df")
@@ -226,8 +259,6 @@ subcellularapp <- function(...){
     
     plot_cell <- shiny::reactiveVal()
     
-    
-    
     shiny::observeEvent(input$action_button, {
       
       file <- input$input_genes_file
@@ -236,18 +267,25 @@ subcellularapp <- function(...){
         genes_tidy <<- read.csv(file$datapath,
                                 header = F,
                                 stringsAsFactors = F)[,1]
+        genes_tidy <<- genes_tidy[genes_tidy != ""]
       }else{
         genes_tidy <<- as.vector(stringi::stri_split(input$input_genes_text,
                                                      regex = "\n",
                                                      simplify=T))
+        genes_tidy <<- genes_tidy[genes_tidy != ""]
       }
-      output$checkInput <- shiny::renderText({ 
+      output$checkInputEmpty <- shiny::renderText({
         if(!shiny::isTruthy(genes_tidy)){
           shiny::validate("HGNC gene symbols need to be entered,\n one per line\nas .csv or in the text box.")
         }
       })
+      output$checkInputLength <- shiny::renderText({
+        if(length(genes_tidy) == 1){
+          shiny::validate("More than one gene symbols need to be entered.")
+        }
+      })
       
-      if(shiny::isTruthy(genes_tidy)){
+      if(shiny::isTruthy(genes_tidy) & length(genes_tidy) > 1){
         
         # getBkgd <- reactive({
         #   if(is.null(input$input_bkgd_file)) return(NULL)
@@ -278,6 +316,26 @@ subcellularapp <- function(...){
                                   organism = input$input_organism)
       }
       
+      
+      output$checkGenesMap1 <- shiny::renderText({
+        if(is.null(comps)){
+          shiny::validate("Gene names don't map. Did you use HGNC symbol
+                          and select correct organism?")
+        }
+      })
+      output$checkGenesMap2 <- shiny::renderText({
+        if(is.null(comps)){
+          shiny::validate("Gene names don't map. Did you use HGNC symbol
+                          and select correct organism?")
+        }
+      })
+      output$checkGenesMap3 <- shiny::renderText({
+        if(is.null(comps)){
+          shiny::validate("Gene names don't map. Did you use HGNC symbol
+                          and select correct organism?")
+        }
+      })
+      
       # output$downloadLog <- shiny::downloadHandler(
       #   filename = function() {
       #     paste("CellVis_log_", Sys.Date(), ".doc", sep="")
@@ -307,6 +365,7 @@ subcellularapp <- function(...){
       }
       
       output$compartment_df <- shiny::renderTable({
+        req(comps)
         shiny::withProgress(message = "Calculating", value = 15, {
           dplyr::mutate(comps, Symbol = sapply(.data$Symbol, function(i) {
                      
@@ -343,6 +402,7 @@ subcellularapp <- function(...){
       
       
       output$plot_cell <- plotly::renderPlotly({
+        req(comps)
         shiny::withProgress(message = "Visualising", value = 15, {
           plot_cell(
             runSubcellulaRvis(comps,
@@ -430,7 +490,7 @@ subcellularapp <- function(...){
     
     
     output$fullEnrichment_df <- shiny::renderTable({
-      shiny::req(genes_tidy)
+      shiny::req(comps)
       shiny::withProgress(message = "Calculating", value = 15, {
         comps_full <<- compartmentData(genes = genes_tidy,
                                        bkgd = bkgd,

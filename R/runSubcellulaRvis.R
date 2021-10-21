@@ -12,7 +12,7 @@
 #' @importFrom rlang .data
 #' @importFrom magrittr `%>%`
 #'
-#' @return
+#' @return data frame
 #' @export
 
 
@@ -23,6 +23,10 @@ compartmentData <- function(genes, bkgd = NULL,
                                          "Rat", "Xenopus")){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
+  
+  if(any(genes == "" | length(genes) < 1)){
+    stop("No genes entered")
+  }
   
   dat <- paste0(organism[1], 
                 ifelse(trafficking, "_traffic_", "_"),
@@ -44,69 +48,77 @@ compartmentData <- function(genes, bkgd = NULL,
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
   
-  enrichment <- lapply(
-    unique(
-      COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc]),
-    function(x){
-      successes.sample <- COMPARTMENTS_parent %>% 
-        dplyr::filter(.data$compartment == x) %>% 
-        dplyr::filter(.data$SYMBOL %in% genes) %>% 
-        unique() %>% 
-        nrow() # How many times term 'i' occurred in sample
-      
-      successes.bkgd <- COMPARTMENTS_parent %>% 
-        dplyr::filter(.data$compartment == x) %>% 
-        unique() %>% 
-        nrow()    #How many times term 'i' occurred in background
-      
-      failure <- bkgd_size - successes.bkgd  #Number of peptides in background minus the peptides with that term
-      
-      sampleSize <- length(genes)
-      
-      samplep <- stats::phyper(successes.sample,
-                               successes.bkgd,
-                               failure,
-                               sampleSize,
-                               lower.tail = F)
-      
-      symbols <- COMPARTMENTS_parent %>% 
-        dplyr::filter(.data$compartment == x) %>% 
-        dplyr::filter(.data$SYMBOL %in% genes) %>% 
-        dplyr::select(.data$SYMBOL) %>% 
-        unique()
-      
-      return(
-        data.frame(
-          Compartment = x,
-          Symbol = paste(symbols$SYMBOL, collapse = ","),
-          n = length(unique(symbols$SYMBOL)),
-          p = samplep)
-      )  
-    }) %>% 
-    dplyr::bind_rows() %>% 
-    dplyr::mutate(FDR = p.adjust(.data$p),
-                  `FDR < 0.05` = ifelse(.data$FDR < 0.05, T, F)
-    ) %>% 
-    dplyr::arrange(.data$FDR) %>% 
-    dplyr::select(.data$Compartment, .data$p,
-           .data$FDR, .data$`FDR < 0.05`,
-           .data$n, .data$Symbol)
-  
-  
-  if(subAnnots){
-    enrichment <- 
-      merge(enrichment, 
-            COMPARTMENTS_parent[,c("compartment", "group")], 
-            by = "compartment",
-            all.y = F) %>% 
-      dplyr::distinct() %>% 
-      dplyr::group_by(.data$compartment, .data$FDR, .data$`FDR < 0.05`) %>% 
-      dplyr::summarise(group = paste(.data$group, collapse = ", "), 
-                       .groups = "keep") %>% 
-      dplyr::arrange(.data$FDR)
+  if(sum(COMPARTMENTS_parent$SYMBOL %in% genes) == 0){
+    return(NULL)
+  } else {
+    enrichment <- lapply(
+      unique(
+        COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc]),
+      function(x){
+        successes.sample <- COMPARTMENTS_parent %>% 
+          dplyr::filter(.data$compartment == x) %>% 
+          dplyr::filter(.data$SYMBOL %in% genes) %>% 
+          unique() %>% 
+          nrow() # How many times term 'i' occurred in sample
+        
+        successes.bkgd <- COMPARTMENTS_parent %>% 
+          dplyr::filter(.data$compartment == x) %>% 
+          unique() %>% 
+          nrow()    #How many times term 'i' occurred in background
+        
+        failure <- bkgd_size - successes.bkgd  #Number of peptides in background minus the peptides with that term
+        
+        sampleSize <- length(genes)
+        
+        samplep <- stats::phyper(successes.sample,
+                                 successes.bkgd,
+                                 failure,
+                                 sampleSize,
+                                 lower.tail = F)
+        
+        symbols <- COMPARTMENTS_parent %>% 
+          dplyr::filter(.data$compartment == x) %>% 
+          dplyr::filter(.data$SYMBOL %in% genes) %>% 
+          dplyr::select(.data$SYMBOL) %>% 
+          unique()
+        
+        return(
+          data.frame(
+            Compartment = x,
+            Symbol = paste(symbols$SYMBOL, collapse = ","),
+            n = length(unique(symbols$SYMBOL)),
+            p = samplep)
+        )  
+      }) %>% 
+      dplyr::bind_rows() %>% 
+      dplyr::mutate(FDR = p.adjust(.data$p),
+                    `FDR < 0.05` = ifelse(.data$FDR < 0.05, T, F)
+      ) %>% 
+      dplyr::arrange(.data$FDR) %>% 
+      dplyr::select(.data$Compartment, .data$p,
+                    .data$FDR, .data$`FDR < 0.05`,
+                    .data$n, .data$Symbol)
+    
+    
+    if(subAnnots){
+      enrichment <- 
+        merge(enrichment, 
+              COMPARTMENTS_parent[,c("compartment", "group")], 
+              by.x = "Compartment", by.y = "compartment",
+              all.y = F) %>% 
+        dplyr::distinct() %>% 
+        dplyr::group_by(.data$Compartment, .data$FDR, .data$`FDR < 0.05`, .data$n, .data$Symbol) %>% 
+        dplyr::summarise(group = paste(.data$group, collapse = ", "), 
+                         .groups = "keep") %>% 
+        dplyr::arrange(.data$FDR) %>% 
+        dplyr::select(.data$Compartment,.data$group,
+                      .data$FDR, .data$`FDR < 0.05`,
+                      .data$n, .data$Symbol) %>% 
+        as.data.frame()
+    }
+    
+    return(enrichment)
   }
-  
-  return(enrichment)
 }
 
 
@@ -135,7 +147,15 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
                               legend.pos = "right",
                               labels = T){
   
+  if(any(colnames(compsDat) != c("Compartment","p","FDR","FDR < 0.05","n","Symbol"))){
+    stop("compsDat must be the output of compartmentData() function.")
+  }
+  
   vis_organelles <- function(compartment, W, H, X, Y, compartments_df = compsDat){
+    
+    if(!compartment %in% compsDat$Compartment){
+      stop("compsDat must be the output of compartmentData() function.")
+    }
     
     FDR <- compartments_df[compartments_df$Compartment == compartment,]$FDR
     
@@ -157,6 +177,13 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   
   
   if(trafficking){
+    
+    if("Golgi apparatus" %in% compsDat$Compartment){
+      # Golgi selected randomly as an example not in trafficking subset
+      stop("Trafficking variable = T, but compsDat not trafficking subset.\n
+           Rerun compartmentsData with trafficking = T")
+    }
+    
     df<- cbind(
       vis_organelles(compartment = "Plasma membrane", W = 210.4, H = 15.663, X = 0, Y = 164.278),
       vis_organelles("Intracellular vesicle", 19.082, 18.552, 129.9, 135.2),
@@ -195,6 +222,12 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
                                  ymin=0, ymax= 189.85)   #size of image
     
   }else{
+    if("Recycling Endosome" %in% compsDat$Compartment){
+      # Recycling Endosome selected randomly as an example not in trafficking subset
+      stop("Trafficking variable = F, but compsDat is the trafficking subset.\n
+           Rerun compartmentsData with trafficking = F")
+    }
+    
     df<- cbind(
       vis_organelles(compartment = "Cytoplasm", W = 1467, H = 1325, X = 153.5, Y = 1622.4 - 1467.5),
       vis_organelles("Nucleus", 431.7, 397, 867, 1622.4 - 1365.7),
