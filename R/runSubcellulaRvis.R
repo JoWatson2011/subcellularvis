@@ -136,7 +136,7 @@ compartmentData <- function(genes, bkgd = NULL,
 #' @importFrom ggplot2 ggplot aes geom_polygon annotation_raster scale_fill_gradientn theme element_blank element_text margin guides geom_label geom_text
 #' @importFrom grid unit
 #' @importFrom rlang .data
-#' @importFrom magick image_read 
+#' @importFrom png readPNG
 #' 
 #' @return ggplot2 object
 #' @export
@@ -193,9 +193,12 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Early Endosome", 75.373,  87.449, 17.575, 61.062)
     )
     
-    img <- magick::image_read(system.file("extdata",
-                                          "endosomalCell_scaled.png",
-                                          package = "subcellularvis"))
+    # img <- magick::image_read(system.file("extdata",
+    #                                       "endosomalCell_scaled.png",
+    #                                       package = "subcellularvis"))
+    img <- png::readPNG(system.file("extdata",
+                                    "endosomalCell_scaled.png",
+                                    package = "subcellularvis"))
     
     g <- ggplot2::ggplot(df
     ) +
@@ -244,10 +247,10 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Golgi apparatus", 479.7, 208.4, 836.5, 1083.75)
     ) 
     
-    img <- magick::image_read(system.file("extdata",
-                                          "CELL_scaled.png",
-                                          package = "subcellularvis")
-                              )
+    img <- png::readPNG(system.file("extdata",
+                                    "CELL_scaled.png",
+                                    package = "subcellularvis")
+    )
     
     g <-  ggplot2::ggplot(df) +
       ggplot2::geom_polygon(ggplot2::aes(x = .data$`Extracellular region_x`,
