@@ -24,7 +24,7 @@ compartmentData(
 \item{organism}{One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"}
 }
 \value{
-
+data frame
 }
 \description{
 Calculate enrichment of subcellular compartment

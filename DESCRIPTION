@@ -32,3 +32,6 @@ Depends:
     R (>= 2.10)
 URL: https://github.com/JoWatson2011/subcellularvis
 BugReports: https://github.com/JoWatson2011/subcellularvis/issues
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

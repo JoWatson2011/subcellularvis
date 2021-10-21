@@ -10,7 +10,7 @@ subcellularapp(...)
 \item{...}{empty}
 }
 \value{
-
+Shiny App
 }
 \description{
 Run Shiny App for SubcellularVis
