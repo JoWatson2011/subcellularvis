@@ -34,8 +34,9 @@ compartmentData <- function(genes, bkgd = NULL,
                 ifelse(subAnnots, "subAnnots", "annots"))
   COMPARTMENTS_parent <- eval(as.name(dat))
   
-  if(organism == "Yeast"){
-    colnames(COMPARTMENTS_parent) = c("SYMBOL", "compartment") 
+  if(organism[1] == "Yeast"){
+    colnames(COMPARTMENTS_parent)[colnames(COMPARTMENTS_parent) == "GENENAME" ] =
+      "SYMBOL" 
   }
   if(is.null(bkgd)){
     bkgd_size  <-  nrow(COMPARTMENTS_parent)
@@ -52,7 +53,7 @@ compartmentData <- function(genes, bkgd = NULL,
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
   
-  if(sum(COMPARTMENTS_parent[,1] %in% as.character(genes)) == 0){
+  if(sum(COMPARTMENTS_parent$SYMBOL %in% as.character(genes)) == 0){
     return(NULL)
   } else {
     enrichment <- lapply(
@@ -72,7 +73,8 @@ compartmentData <- function(genes, bkgd = NULL,
           unique() %>% 
           nrow()    #How many times term 'i' occurred in background
         
-        failure <- bkgd_size - successes.bkgd  #Number of peptides in background minus the peptides with that term
+        failure <- bkgd_size - successes.bkgd  
+        #Number of peptides in background minus the peptides with that term
         
         sampleSize <- length(genes)
         
@@ -100,7 +102,8 @@ compartmentData <- function(genes, bkgd = NULL,
             p = samplep)
         )  
       }) %>% 
-      dplyr::bind_rows() %>% 
+      dplyr::bind_rows() %>%
+      dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
       dplyr::mutate(FDR = p.adjust(.data$p),
                     `FDR < 0.05` = ifelse(.data$FDR < 0.05, T, F)
       ) %>% 
