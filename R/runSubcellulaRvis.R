@@ -23,6 +23,7 @@ compartmentData <- function(genes, bkgd = NULL,
                                          "Rat", "Xenopus")){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
+  genes <- na.omit(genes)
   
   if(any(genes == "" | length(genes) < 1)){
     stop("No genes entered")
@@ -33,6 +34,9 @@ compartmentData <- function(genes, bkgd = NULL,
                 ifelse(subAnnots, "subAnnots", "annots"))
   COMPARTMENTS_parent <- eval(as.name(dat))
   
+  if(organism == "Yeast"){
+    colnames(COMPARTMENTS_parent) = c("SYMBOL", "compartment") 
+  }
   if(is.null(bkgd)){
     bkgd_size  <-  nrow(COMPARTMENTS_parent)
   } else {
@@ -48,7 +52,7 @@ compartmentData <- function(genes, bkgd = NULL,
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
   
-  if(sum(COMPARTMENTS_parent$SYMBOL %in% genes) == 0){
+  if(sum(COMPARTMENTS_parent[,1] %in% as.character(genes)) == 0){
     return(NULL)
   } else {
     enrichment <- lapply(
@@ -57,7 +61,9 @@ compartmentData <- function(genes, bkgd = NULL,
       function(x){
         successes.sample <- COMPARTMENTS_parent %>% 
           dplyr::filter(.data$compartment == x) %>% 
-          dplyr::filter(.data$SYMBOL %in% genes) %>% 
+          dplyr::filter(
+            .data$SYMBOL %in% genes 
+          ) %>% 
           unique() %>% 
           nrow() # How many times term 'i' occurred in sample
         
@@ -78,8 +84,12 @@ compartmentData <- function(genes, bkgd = NULL,
         
         symbols <- COMPARTMENTS_parent %>% 
           dplyr::filter(.data$compartment == x) %>% 
-          dplyr::filter(.data$SYMBOL %in% genes) %>% 
-          dplyr::select(.data$SYMBOL) %>% 
+          dplyr::filter(
+            .data$SYMBOL %in% genes 
+            ) %>% 
+          dplyr::select(
+              .data$SYMBOL
+            ) %>% 
           unique()
         
         return(
