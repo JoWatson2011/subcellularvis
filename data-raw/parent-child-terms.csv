@@ -1,0 +1,15 @@
+compartment,ID,n
+Cytoplasm,GO:0005737,1230
+Cytoskeleton,GO:0005856,273
+Endoplasmic reticulum,GO:0005783,110
+Endosome,GO:0005768,77
+Extracellular region,GO:0005576,94
+Golgi apparatus,GO:0005794,47
+Intracellular vesicle,GO:0097708,294
+Lysosome,GO:0005764,38
+Mitochondrion,GO:0005739,96
+Nucleus,GO:0005634,492
+Peroxisome,GO:0005777,19
+Plasma membrane,GO:0005886,471
+Ribosome,GO:0005840,20
+Vacuole,GO:0005773,89
