@@ -15,7 +15,7 @@
 #'
 #' @return Shiny App
 #' @export
- 
+
 subcellularapp <- function(...){
   ui <- shiny::fluidPage(
     theme = shinythemes::shinytheme("cosmo"),
@@ -69,7 +69,7 @@ subcellularapp <- function(...){
         tags$head(tags$style("#checkInputLength{color: red;
                                   }"
         )
-      ),
+        ),
       ),
       
       shiny::mainPanel(
@@ -88,7 +88,9 @@ subcellularapp <- function(...){
             htmltools::img(src="https://bbsrc.ukri.org/bbsrc/includes/themes/BBSRC/images/logo-1.png",
                            width = "200px"),
             htmltools::img(src="https://www.staffnet.manchester.ac.uk/brand/visual-identity/logo/logo_big.gif",
-                           width = "200px",)
+                           width = "200px"),
+            htmltools::img(src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Wellcome_Trust_logo.svg/800px-Wellcome_Trust_logo.svg.png",
+                           width = "75px")
           ),
           
           shiny::tabPanel("Plot", 
@@ -201,23 +203,42 @@ subcellularapp <- function(...){
             "Help",
             htmltools::br(),
             htmltools::p(htmltools::strong("How does SubCellulaRVis work?")),
-            htmltools::p("SubCellulaRVis calculates the enrichment of . The broad categories of organelles and compartments were drawn from the Gene Ontology Cellular Compartments (GOCC). Using the GO hierachy, all \'child\' terms of these categories are grouped together to calculate a single enrichment score for each category. We can then visualise this in a single graphic."),
-            htmltools::p(htmltools::strong("What is the background size?")),
-            htmltools::p("The \"background size\" is the size of population being sampled (e.g. proteome size for a cell type or species). The default background size is the predicted number of proteins in the HeLa proteome."),
-            htmltools::p(htmltools::strong("What is the difference between the simple and full enrichment?")),
-            htmltools::p("The simple enrichment is based on the categorisation as described above. The full enrichment is a standard enrichment analysis based on all the GOCC terms."),
+            htmltools::p("SubCellulaRVis calculates the enrichment of proteins
+                         for cellular compartments, inferred from the Gene
+                         Ontology Cellular Compartment aspect. The broad
+                         categories of organelles and compartments were drawn
+                         from the Gene Ontology Cellular Compartments (GOCC).
+                         Using the GO hierachy, all \'child\' terms of these
+                         categories are grouped together to calculate a single
+                         enrichment score for each category. We can then visualise this
+                         in a single graphic."),
+            htmltools::p(htmltools::strong("What is the background population?")),
+            htmltools::p("The \"background population\" is the total population
+                         of expressed proteins in the sampled (e.g. proteome 
+                         size for a cell type or species). The default 
+                         background size is the genes in the
+                         reference genomes."),
+            htmltools::p(htmltools::strong("What is the difference between the
+                                           simple and full enrichment?")),
+            htmltools::p("The simple enrichment is based on the categorisation
+                         as described above. The full enrichment is a standard
+                         enrichment analysis based on all the GOCC terms."),
             htmltools::br(),
             htmltools::p(htmltools::strong("How can I export my results?")),
-            htmltools::p("The visualisation can be exported in multiple image formats from the \"Plot\" tab.\n
-            Enrichment results can be exported as a .csv file from the \"Full Enrichment\" tab.\n
-            A log of the analysis can be exported as a .doc file from the \"Table\" tab"),
+            htmltools::p("The visualisation can be exported in multiple image
+            formats from the \"Plot\" tab.\n
+            Enrichment results can be exported as a .csv file from the
+            \"Full Enrichment\" tab.\n
+            A log of the analysis can be exported as a .doc file from the
+                         \"Table\" tab"),
             htmltools::br(),
             htmltools::br(),
-            htmltools::p("If you could not find your answer here, please contact: joanne.watson@manchester.ac.uk\n
+            htmltools::p("If you could not find your answer here, please 
+            contact: joanne.watson@manchester.ac.uk\n
             or raise an issue on the GitHub repository:" ),
             htmltools::tagList(
-              htmltools::a("www.github.com/jowatson2011/shiny_subcellularvis",
-                           href = "www.github.com/jowatson2011/shiny_subcellularvis")
+              htmltools::a("www.github.com/jowatson2011/subcellularvis",
+                           href = "www.github.com/jowatson2011/subcellularvis")
             )
           )
         )
@@ -368,20 +389,20 @@ subcellularapp <- function(...){
         req(comps)
         shiny::withProgress(message = "Calculating", value = 15, {
           dplyr::mutate(comps, Symbol = sapply(.data$Symbol, function(i) {
-                     
-                     vec <- na.omit(strsplit(i, ",")[[1]][1:7])
-                     
-                     if(length(vec) == 0){
-                       vec <- ""
-                     }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
-                       vec <- paste(vec, collapse = ", ")
-                     }else{
-                       vec <- paste(c(vec, "..."), collapse = ", ")
-                     }
-                     
-                     return(vec)
-                     
-                   })
+            
+            vec <- na.omit(strsplit(i, ",")[[1]][1:7])
+            
+            if(length(vec) == 0){
+              vec <- ""
+            }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
+              vec <- paste(vec, collapse = ", ")
+            }else{
+              vec <- paste(c(vec, "..."), collapse = ", ")
+            }
+            
+            return(vec)
+            
+          })
           )
           # comps[,c("compartment",
           # "p",
@@ -417,6 +438,45 @@ subcellularapp <- function(...){
           plotly::ggplotly(plot_cell())
         })
       })
+      
+      #####
+      # Calculate "full" enrichment
+      #####
+      
+      
+      output$fullEnrichment_df <- shiny::renderTable({
+        shiny::req(comps)
+        shiny::withProgress(message = "Calculating", value = 15, {
+          comps_full <<- compartmentData(genes = genes_tidy,
+                                         bkgd = bkgd,
+                                         trafficking = input$traffic,
+                                         subAnnots = T,
+                                         organism = input$input_organism)[1:50,]
+          dplyr::mutate(comps_full, Symbol = 
+                          sapply(.data$Symbol, function(i) {
+                            
+                            vec <- na.omit(strsplit(i, ",")[[1]][1:7])
+                            
+                            if(length(vec) == 0){
+                              vec <- ""
+                            }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
+                              vec <- paste(vec, collapse = ", ")
+                            }else{
+                              vec <- paste(c(vec, "..."), collapse = ", ")
+                            }
+                            
+                            return(vec)
+                            
+                          })
+          )
+          #comps_full[,c("compartment",
+          # "FDR",
+          # "FDR < 0.05",
+          # "group")]
+        })
+      },
+      digits = 5)
+      
     })
     
     
@@ -482,45 +542,9 @@ subcellularapp <- function(...){
                              "application/pdf",
                              paste0("image/", input$export_fileType))
       )
+      
+      
     })
-    
-    #####
-    # Calculate "full" enrichment
-    #####
-    
-    
-    output$fullEnrichment_df <- shiny::renderTable({
-      shiny::req(comps)
-      shiny::withProgress(message = "Calculating", value = 15, {
-        comps_full <<- compartmentData(genes = genes_tidy,
-                                       bkgd = bkgd,
-                                       trafficking = input$traffic,
-                                       subAnnots = T,
-                                       organism = input$input_organism)[1:50,]
-        dplyr::mutate(comps_full, Symbol = 
-                 sapply(.data$Symbol, function(i) {
-                   
-                   vec <- na.omit(strsplit(i, ",")[[1]][1:7])
-                   
-                   if(length(vec) == 0){
-                     vec <- ""
-                   }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
-                     vec <- paste(vec, collapse = ", ")
-                   }else{
-                     vec <- paste(c(vec, "..."), collapse = ", ")
-                   }
-                   
-                   return(vec)
-                   
-                 })
-        )
-        #comps_full[,c("compartment",
-        # "FDR",
-        # "FDR < 0.05",
-        # "group")]
-      }) 
-    },
-    digits = 5)
     
     
     output$downloadFullEnrichment <- shiny::downloadHandler(
