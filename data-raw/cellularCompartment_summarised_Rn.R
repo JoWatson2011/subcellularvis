@@ -48,10 +48,10 @@ COMPARTMENTS_traffic_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-traffic_annots <- AnnotationDbi::select(org.Rn.eg.db,
-                                        COMPARTMENTS_traffic_offspring$ID,
-                                        c("GO", "SYMBOL"),
-                                        "GO") %>%
+Rat_traffic_annots <- AnnotationDbi::select(org.Rn.eg.db,
+                                            COMPARTMENTS_traffic_offspring$ID,
+                                            c("GO", "SYMBOL"),
+                                            "GO") %>%
   dplyr::select(GO, SYMBOL) %>%
   unique() %>%
   merge(COMPARTMENTS_traffic_offspring,
@@ -61,8 +61,6 @@ traffic_annots <- AnnotationDbi::select(org.Rn.eg.db,
   na.omit() %>%
   distinct()
 
-
-saveRDS(traffic_annots, "data/Rat/traffic_annots.rds")
 
 ### Whole cell
 COMPARTMENTS_parent <-
@@ -116,10 +114,10 @@ COMPARTMENTS_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-annots <- AnnotationDbi::select(org.Rn.eg.db,
-                                COMPARTMENTS_offspring$ID,
-                                c("GO", "SYMBOL"),
-                                "GO") %>%
+Rat_annots <- AnnotationDbi::select(org.Rn.eg.db,
+                                    COMPARTMENTS_offspring$ID,
+                                    c("GO", "SYMBOL"),
+                                    "GO") %>%
   dplyr::select(GO, SYMBOL) %>%
   unique() %>%
   merge(COMPARTMENTS_offspring, by.x = "GO", by.y = "ID") %>%
@@ -127,7 +125,6 @@ annots <- AnnotationDbi::select(org.Rn.eg.db,
   na.omit() %>%
   distinct()
 
-saveRDS(annots, "data/Rat/annots.rds")
 
 ########################################
 ### Detailed annotations
@@ -143,10 +140,10 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_traffic_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-traffic_subannots_genes <- AnnotationDbi::select(org.Rn.eg.db,
-                                                 traffic_subannots_terms$GOID,
-                                                 "SYMBOL",
-                                                 "GO") %>%
+Rat_traffic_subannots <- AnnotationDbi::select(org.Rn.eg.db,
+                                               traffic_subannots_terms$GOID,
+                                               "SYMBOL",
+                                               "GO") %>%
   left_join(traffic_subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
                 SYMBOL,
@@ -154,8 +151,6 @@ traffic_subannots_genes <- AnnotationDbi::select(org.Rn.eg.db,
                 group = compartment) %>%
   distinct()
 
-
-saveRDS(traffic_subannots_genes, "data/Rat/traffic_subAnnots.rds")
 
 # Whole cell
 subannots_terms <- AnnotationDbi::select(GO.db,
@@ -166,16 +161,13 @@ subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-subannots_genes <- AnnotationDbi::select(org.Rn.eg.db,
-                                         subannots_terms$GOID,
-                                         "SYMBOL",
-                                         "GO") %>%
+Rat_subannots <- AnnotationDbi::select(org.Rn.eg.db,
+                                       subannots_terms$GOID,
+                                       "SYMBOL",
+                                       "GO") %>%
   left_join(subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
                 SYMBOL,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
-
-
-saveRDS(subannots_genes, "data/Rat/subAnnots.rds")

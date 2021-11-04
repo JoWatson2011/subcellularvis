@@ -48,7 +48,7 @@ COMPARTMENTS_traffic_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-traffic_annots <- AnnotationDbi::select(org.Dm.eg.db,
+Drosophila_traffic_annots <- AnnotationDbi::select(org.Dm.eg.db,
                                         COMPARTMENTS_traffic_offspring$ID,
                                         c("GO", "SYMBOL"),
                                         "GO") %>%
@@ -60,9 +60,6 @@ traffic_annots <- AnnotationDbi::select(org.Dm.eg.db,
   dplyr::select(SYMBOL, compartment) %>%
   na.omit() %>%
   distinct()
-
-
-saveRDS(traffic_annots, "data/Drosophila/traffic_annots.rds")
 
 ### Whole cell
 COMPARTMENTS_parent <-
@@ -116,7 +113,7 @@ COMPARTMENTS_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-annots <- AnnotationDbi::select(org.Dm.eg.db,
+Drosophila_annots <- AnnotationDbi::select(org.Dm.eg.db,
                                 COMPARTMENTS_offspring$ID,
                                 c("GO", "SYMBOL"),
                                 "GO") %>%
@@ -126,8 +123,6 @@ annots <- AnnotationDbi::select(org.Dm.eg.db,
   dplyr::select(SYMBOL, compartment) %>%
   na.omit() %>%
   distinct()
-
-saveRDS(annots, "data/Drosophila/annots.rds")
 
 ########################################
 ### Detailed annotations
@@ -143,7 +138,7 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_traffic_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-traffic_subannots_genes <- AnnotationDbi::select(org.Dm.eg.db,
+Drosophila_traffic_subannots <- AnnotationDbi::select(org.Dm.eg.db,
                                                  traffic_subannots_terms$GOID,
                                                  "SYMBOL",
                                                  "GO") %>%
@@ -155,7 +150,6 @@ traffic_subannots_genes <- AnnotationDbi::select(org.Dm.eg.db,
   distinct()
 
 
-saveRDS(traffic_subannots_genes, "data/Drosophila/traffic_subAnnots.rds")
 
 # Whole cell
 subannots_terms <- AnnotationDbi::select(GO.db,
@@ -166,7 +160,7 @@ subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-subannots_genes <- AnnotationDbi::select(org.Dm.eg.db,
+Drosophila_subannots <- AnnotationDbi::select(org.Dm.eg.db,
                                          subannots_terms$GOID,
                                          "SYMBOL",
                                          "GO") %>%
@@ -177,5 +171,3 @@ subannots_genes <- AnnotationDbi::select(org.Dm.eg.db,
                 group = compartment) %>%
   distinct()
 
-
-saveRDS(subannots_genes, "data/Drosophila/subAnnots.rds")

@@ -48,7 +48,7 @@ COMPARTMENTS_traffic_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-traffic_annots <- AnnotationDbi::select(org.Mm.eg.db,
+Mouse_traffic_annots <- AnnotationDbi::select(org.Mm.eg.db,
                                         COMPARTMENTS_traffic_offspring$ID,
                                         c("GO", "SYMBOL"),
                                         "GO") %>%
@@ -61,8 +61,6 @@ traffic_annots <- AnnotationDbi::select(org.Mm.eg.db,
   na.omit() %>%
   distinct()
 
-
-saveRDS(traffic_annots, "data/Mouse/traffic_annots.rds")
 
 ### Whole cell
 COMPARTMENTS_parent <-
@@ -116,7 +114,7 @@ COMPARTMENTS_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-annots <- AnnotationDbi::select(org.Mm.eg.db,
+Mouse_annots <- AnnotationDbi::select(org.Mm.eg.db,
                                 COMPARTMENTS_offspring$ID,
                                 c("GO", "SYMBOL"),
                                 "GO") %>%
@@ -126,8 +124,6 @@ annots <- AnnotationDbi::select(org.Mm.eg.db,
   dplyr::select(SYMBOL, compartment) %>%
   na.omit() %>%
   distinct()
-
-saveRDS(annots, "data/Mouse/annots.rds")
 
 ########################################
 ### Detailed annotations
@@ -143,7 +139,7 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_traffic_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-traffic_subannots_genes <- AnnotationDbi::select(org.Mm.eg.db,
+Mouse_traffic_subannots <- AnnotationDbi::select(org.Mm.eg.db,
                                                  traffic_subannots_terms$GOID,
                                                  "SYMBOL",
                                                  "GO") %>%
@@ -154,9 +150,6 @@ traffic_subannots_genes <- AnnotationDbi::select(org.Mm.eg.db,
                 group = compartment) %>%
   distinct()
 
-
-saveRDS(traffic_subannots_genes, "data/Mouse/traffic_subAnnots.rds")
-
 # Whole cell
 subannots_terms <- AnnotationDbi::select(GO.db,
                                          COMPARTMENTS_offspring$ID,
@@ -166,7 +159,7 @@ subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-subannots_genes <- AnnotationDbi::select(org.Mm.eg.db,
+Mouse_subannots <- AnnotationDbi::select(org.Mm.eg.db,
                                          subannots_terms$GOID,
                                          "SYMBOL",
                                          "GO") %>%
@@ -176,6 +169,3 @@ subannots_genes <- AnnotationDbi::select(org.Mm.eg.db,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
-
-
-saveRDS(subannots_genes, "data/Mouse/subAnnots.rds")

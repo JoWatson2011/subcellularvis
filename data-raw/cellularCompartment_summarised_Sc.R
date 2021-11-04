@@ -48,7 +48,7 @@ COMPARTMENTS_traffic_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-traffic_annots <- AnnotationDbi::select(org.Sc.sgd.db,
+Yeast_traffic_annots <- AnnotationDbi::select(org.Sc.sgd.db,
                                         COMPARTMENTS_traffic_offspring$ID,
                                         c("GO", "GENENAME"),
                                         "GO") %>%
@@ -60,9 +60,6 @@ traffic_annots <- AnnotationDbi::select(org.Sc.sgd.db,
   dplyr::select(GENENAME, compartment) %>%
   na.omit() %>%
   distinct()
-
-
-saveRDS(traffic_annots, "data/Yeast/traffic_annots.rds")
 
 ### Whole cell
 COMPARTMENTS_parent <-
@@ -116,7 +113,7 @@ COMPARTMENTS_offspring <-
   dplyr::select(compartment, ID) %>%
   unique()
 
-annots <- AnnotationDbi::select(org.Sc.sgd.db,
+Yeast_annots <- AnnotationDbi::select(org.Sc.sgd.db,
                                 COMPARTMENTS_offspring$ID,
                                 c("GO", "GENENAME"),
                                 "GO") %>%
@@ -126,8 +123,6 @@ annots <- AnnotationDbi::select(org.Sc.sgd.db,
   dplyr::select(GENENAME, compartment) %>%
   na.omit() %>%
   distinct()
-
-saveRDS(annots, "data/Yeast/annots.rds")
 
 ########################################
 ### Detailed annotations
@@ -143,7 +138,7 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_traffic_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-traffic_subannots_genes <- AnnotationDbi::select(org.Sc.sgd.db,
+Yeast_traffic_subannots <- AnnotationDbi::select(org.Sc.sgd.db,
                                                  traffic_subannots_terms$GOID,
                                                  "GENENAME",
                                                  "GO") %>%
@@ -155,8 +150,6 @@ traffic_subannots_genes <- AnnotationDbi::select(org.Sc.sgd.db,
   distinct()
 
 
-saveRDS(traffic_subannots_genes, "data/Yeast/traffic_subAnnots.rds")
-
 # Whole cell
 subannots_terms <- AnnotationDbi::select(GO.db,
                                          COMPARTMENTS_offspring$ID,
@@ -166,7 +159,7 @@ subannots_terms <- AnnotationDbi::select(GO.db,
   left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>%
   distinct()
 
-subannots_genes <- AnnotationDbi::select(org.Sc.sgd.db,
+Yeast_subannots <- AnnotationDbi::select(org.Sc.sgd.db,
                                          subannots_terms$GOID,
                                          "GENENAME",
                                          "GO") %>%
@@ -176,6 +169,3 @@ subannots_genes <- AnnotationDbi::select(org.Sc.sgd.db,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
-
-
-saveRDS(subannots_genes, "data/Yeast/subAnnots.rds")
