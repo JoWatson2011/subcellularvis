@@ -4,8 +4,8 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of subcellularvis is to ...
-The app is hosted [here]()
+The goal of subcellularvis is to simplify the interpretation of Gene Ontology Cellular Compartment enrichment analyses.
+The app is hosted [here](phenome.manchester.ac.uk/subcellular/)
 
 ## Installation
 
@@ -17,7 +17,9 @@ devtools::install_github("jowatson2011/subcellularvis")
 
 ## Running the Shiny App from Rstudio
 
-This is a basic example which shows you how to solve a common problem:
+This example  shows you how to run a basic analysis.
+
+Either through the Shiny app interface:
 
 ``` r
 library(subcellularvis)
@@ -25,7 +27,7 @@ library(subcellularvis)
 subcellularapp()
 ```
 
-To run a basic analysis outside of the app:
+Or you can run analysis outside of the app:
 ``` r
 genes <- c("MAPK1", "MAPK3")
 comps <- compartmentData(genes)
