@@ -277,10 +277,9 @@ subcellularapp <- function(...){
       shiny::updateTabsetPanel(inputId = "tabsPanel", selected = "Help")
     })
     
-    
-    plot_cell <- shiny::reactiveVal()
-    
     shiny::observeEvent(input$action_button, {
+      
+      plot_cell <- shiny::reactiveVal()
       
       file <- input$input_genes_file
       
@@ -337,7 +336,7 @@ subcellularapp <- function(...){
                                   organism = input$input_organism)
       }
       
-      
+
       output$checkGenesMap1 <- shiny::renderText({
         if(is.null(comps)){
           shiny::validate("Gene names don't map. Did you use HGNC symbol
@@ -424,12 +423,13 @@ subcellularapp <- function(...){
       
       output$plot_cell <- plotly::renderPlotly({
         req(comps)
+        tr <- isolate(input$traffic)
         shiny::withProgress(message = "Visualising", value = 15, {
           plot_cell(
             runSubcellulaRvis(comps,
                               colScheme_low = input$colScheme_low,
                               colScheme_high = input$colScheme_high,
-                              trafficking = input$traffic,
+                              trafficking = tr,
                               text_size = 6,
                               legend = input$includeLegend,
                               legend.pos = input$legendPos,
