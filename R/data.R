@@ -1,7 +1,7 @@
 #' Human gene list to be used as example input
 #' Taken from Uniprot; proteins annotated as GPI anchored
 #'
-#' @format A data frame with 346 rows and 1 variables:
+#' @format A data frame with 139 rows and 1 variables:
 #' \describe{
 #'   \item{v1}{Human genes}
 #'   ...
