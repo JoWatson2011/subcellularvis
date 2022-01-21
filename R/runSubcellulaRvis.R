@@ -2,7 +2,8 @@
 #'
 #' @param genes input genes (HGNC symbol) as character vector
 #' @param bkgd background population. Defaults to size of species library
-#' @param trafficking Logical; Calculate enrichment within endolysosome system?
+#' @param aspect Character; either "Whole cell" or "Endosomal system.
+#' Latter will calculate enrichment within endosomal system. system?
 #' @param subAnnots Logical; Calculate enrichment on all terms, not summarised
 #' @param organism One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"
 #'
@@ -17,10 +18,12 @@
 
 
 compartmentData <- function(genes, bkgd = NULL,
-                            trafficking = F, subAnnots = F,
+                            aspect = c("Whole cell", "Endosomal systems"), 
+                            subAnnots = F,
                             organism = c("Human", "Mouse", 
                                          "Drosophila", "Yeast", 
-                                         "Rat", "Xenopus")){
+                                         "Rat", "Xenopus"),
+                            significanceThresh = 0.05){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
   genes <- na.omit(genes)
@@ -30,8 +33,8 @@ compartmentData <- function(genes, bkgd = NULL,
   }
   
   dat <- paste0(organism[1], 
-                ifelse(trafficking, "_traffic_", "_"),
-                ifelse(subAnnots, "subAnnots", "annots"))
+                ifelse(aspect == "Endosomal system", "_traffic_", "_"),
+                ifelse(subAnnots, "subannots", "annots"))
   COMPARTMENTS_parent <- eval(as.name(dat))
   
   if(organism[1] == "Yeast"){
@@ -105,11 +108,11 @@ compartmentData <- function(genes, bkgd = NULL,
       dplyr::bind_rows() %>%
       dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
       dplyr::mutate(FDR = p.adjust(.data$p),
-                    `FDR < 0.05` = ifelse(.data$FDR < 0.05, T, F)
+                    Significant = ifelse(.data$FDR < significanceThresh, T, F)
       ) %>% 
       dplyr::arrange(.data$FDR) %>% 
       dplyr::select(.data$Compartment, .data$p,
-                    .data$FDR, .data$`FDR < 0.05`,
+                    .data$FDR, .data$Significant,
                     .data$n, .data$Symbol)
     
     
@@ -120,12 +123,16 @@ compartmentData <- function(genes, bkgd = NULL,
               by.x = "Compartment", by.y = "compartment",
               all.y = F) %>% 
         dplyr::distinct() %>% 
-        dplyr::group_by(.data$Compartment, .data$FDR, .data$`FDR < 0.05`, .data$n, .data$Symbol) %>% 
+        dplyr::group_by(.data$Compartment,
+                        .data$FDR, 
+                        .data$Significant,
+                        .data$n, 
+                        .data$Symbol) %>% 
         dplyr::summarise(group = paste(.data$group, collapse = ", "), 
                          .groups = "keep") %>% 
         dplyr::arrange(.data$FDR) %>% 
         dplyr::select(.data$Compartment,.data$group,
-                      .data$FDR, .data$`FDR < 0.05`,
+                      .data$FDR, .data$Significant,
                       .data$n, .data$Symbol) %>% 
         as.data.frame()
     }
@@ -140,7 +147,8 @@ compartmentData <- function(genes, bkgd = NULL,
 #' @param compsDat Output of compartmentData() 
 #' @param colScheme_low Low value (i.e. most statistically ignificant) of colour scheme 
 #' @param colScheme_high High value (i.e. most statistically significant) of colour scheme
-#' @param trafficking Logical; Visualise endolysosome system? 
+#' @param aspect Character; either "Whole cell" or "Endosomal system.
+#' Latter will calculate enrichment within endosomal system.
 #' @param text_size Size of text if using 
 #' @param legend Logical; include legend?
 #' @param legend.pos passes to ggplot2::theme(legend.postion = legend.pos). One of "right", "left", "bottom", "top"
@@ -154,13 +162,15 @@ compartmentData <- function(genes, bkgd = NULL,
 #' @return ggplot2 object
 #' @export
 runSubcellulaRvis <- function(compsDat, colScheme_low, 
-                              colScheme_high, trafficking = F, 
+                              colScheme_high, 
+                              aspect = c("Whole cell","Endosomal system"), 
                               text_size = 2,
                               legend = T,
                               legend.pos = "right",
-                              labels = T){
+                              labels = T,
+                              significanceThresh = 0.05){
   
-  if(any(colnames(compsDat) != c("Compartment","p","FDR","FDR < 0.05","n","Symbol"))){
+  if(any(colnames(compsDat) != c("Compartment","p","FDR","Significant","n","Symbol"))){
     stop("compsDat must be the output of compartmentData() function.")
   }
   
@@ -189,12 +199,12 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   }
   
   
-  if(trafficking){
+  if(aspect== "Endosomal system"){
     
     if("Golgi apparatus" %in% compsDat$Compartment){
       # Golgi selected randomly as an example not in trafficking subset
-      stop("Trafficking variable = T, but compsDat not trafficking subset.\n
-           Rerun compartmentsData with trafficking = T")
+      stop("Whole cell compartment data supplied while Endosomal system is
+           set as aspect. Please rerun with aspect = \"Whole cell\"")
     }
     
     df<- cbind(
@@ -240,8 +250,8 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   }else{
     if("Recycling Endosome" %in% compsDat$Compartment){
       # Recycling Endosome selected randomly as an example not in trafficking subset
-      stop("Trafficking variable = F, but compsDat is the trafficking subset.\n
-           Rerun compartmentsData with trafficking = F")
+      stop("Endosomal system compartment data supplied while Whole cell is
+           set as aspect. Please rerun with aspect = \"Endosomal system\"")
     }
     
     df<- cbind(
@@ -310,10 +320,13 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
                                  ymin=0, ymax= 1621.419)   #size of image
   }
   
+  lim <- max(compsDat$FDR[compsDat$FDR <= significanceThresh])
   g <- g +
     ggplot2::scale_fill_gradientn(name = "FDR",
-                                  breaks = seq(0, max(compsDat$FDR[compsDat$FDR <= 0.05]), max(compsDat$FDR[compsDat$FDR <= 0.05])/5), 
-                                  limits = c(0, max(compsDat$FDR[compsDat$FDR <= 0.05])),
+                                  breaks = seq(0, 
+                                               lim,
+                                               lim/5), 
+                                  limits = c(0, lim),
                                   colors = c(colScheme_low, colScheme_high),
                                   guide = "colorbar",
                                   na.value = "white")+
@@ -361,7 +374,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   }
   
   if(labels == T){
-    if(trafficking){
+    if(aspect == "Endosomal system"){
       labels_df <-  data.frame(
         label = c("Early Endosome", "Late Endosome",
                   "Vesicle", "Recycling Endosome",
