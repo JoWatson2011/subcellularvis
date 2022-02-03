@@ -82,8 +82,8 @@ subcellularapp <- function(...){
             htmltools::p(htmltools::strong("SubcellulaRVis a tool for visualising enrichment of\n
                    Gene Ontology Cellular Compartments within gene lists")),
             htmltools::tagList("Source code can be found at:", 
-                               htmltools::a("www.github.com/jowatson2011/shiny_subcellularvis",
-                                            href = "www.github.com/jowatson2011/shiny_subcellularvis")
+                               htmltools::a("www.github.com/jowatson2011/subcellularvis",
+                                            href = "www.github.com/jowatson2011/subcellularvis")
             ),
             htmltools::br(),htmltools::br(),
             htmltools::p("Supported by:"),

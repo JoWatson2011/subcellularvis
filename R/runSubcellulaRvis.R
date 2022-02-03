@@ -106,7 +106,7 @@ compartmentData <- function(genes, bkgd = NULL,
         )  
       }) %>% 
       dplyr::bind_rows() %>%
-      dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
+    #  dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
       dplyr::mutate(FDR = p.adjust(.data$p),
                     Significant = ifelse(.data$FDR < significanceThresh, T, F)
       ) %>% 
