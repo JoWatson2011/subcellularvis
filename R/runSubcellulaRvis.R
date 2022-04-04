@@ -2,10 +2,13 @@
 #'
 #' @param genes input genes (HGNC symbol) as character vector
 #' @param bkgd background population. Defaults to size of species library
+#' @param id_type Character; either "SYMBOL" or "UNIPROT", relating to identifier type of gene list.
 #' @param aspect Character; either "Whole cell" or "Endosomal system.
 #' Latter will calculate enrichment within endosomal system. system?
 #' @param subAnnots Logical; Calculate enrichment on all terms, not summarised
 #' @param organism One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"
+#' @param annotationSource Annotation source, Gene Ontology or (if organism = "Human") the Human Protein Atlas
+#' @param significanceThresh Threshold for FDR statistical significance. Default is 0.05
 #'
 #'
 #' @importFrom dplyr mutate filter select arrange bind_rows distinct group_by summarise
@@ -18,11 +21,14 @@
 
 
 compartmentData <- function(genes, bkgd = NULL,
-                            aspect = c("Whole cell", "Endosomal systems"), 
+                            id_type = c("SYMBOL", "UNIPROT"),
+                            aspect = c("Whole cell", "Endosomal system"), 
                             subAnnots = F,
                             organism = c("Human", "Mouse", 
                                          "Drosophila", "Yeast", 
                                          "Rat", "Xenopus"),
+                            annotationSource = c("Gene Ontology", 
+                                                 "Human Protein Atlas"),
                             significanceThresh = 0.05){
   # Identify 'parent' GO terms + IDs.
   # http://www.supfam.org/SUPERFAMILY/cgi-bin/dcgo.cgi
@@ -33,41 +39,54 @@ compartmentData <- function(genes, bkgd = NULL,
   }
   
   dat <- paste0(organism[1], 
-                ifelse(aspect == "Endosomal system", "_traffic_", "_"),
-                ifelse(subAnnots, "subannots", "annots"))
+                ifelse(annotationSource == "Human Protein Atlas" & 
+                         organism == "Human", "_HPA", "")
+                )
+  dat <- paste0(ifelse(aspect[1] == "Endosomal system",
+                       gsub("_HPA", "", dat),
+                       dat),
+                ifelse(aspect[1] == "Endosomal system",
+                       "_traffic", "")
+  )
+  dat <- paste0(ifelse(subAnnots,
+                       gsub("_HPA", "", dat),
+                       dat),
+                ifelse(subAnnots, "_subannots", "_annots")
+                )
   COMPARTMENTS_parent <- eval(as.name(dat))
+  COMPARTMENTS_parent <- distinct(COMPARTMENTS_parent[,c("compartment", id_type[1])])
   
-  if(organism[1] == "Yeast"){
-    colnames(COMPARTMENTS_parent)[colnames(COMPARTMENTS_parent) == "GENENAME" ] =
-      "SYMBOL" 
-  }
   if(is.null(bkgd)){
-    bkgd_size  <-  nrow(COMPARTMENTS_parent)
-  } else {
-    COMPARTMENTS_parent <- dplyr::filter(COMPARTMENTS_parent, .data$SYMBOL %in% bkgd)
+    bkgd_size  <- length(unique(COMPARTMENTS_parent[,id_type[1]]))
+  } else {2
+    COMPARTMENTS_parent <- COMPARTMENTS_parent[COMPARTMENTS_parent[,id_type[1]] %in% bkgd,]
     bkgd_size  <-  length(bkgd)
   }
   
   if(subAnnots == T) {
-    COMPARTMENTS_parent$calc <- ifelse(COMPARTMENTS_parent$SYMBOL %in% genes, T, F)
+    COMPARTMENTS_parent$calc <- ifelse(COMPARTMENTS_parent[,id_type[1]] %in% genes, T, F)
   } else {
     COMPARTMENTS_parent$calc <- T
   }
   # Annotate genes with GO CC terms and then filter
   # for those in lookup table
+  unmapped <- paste(genes[!genes %in% COMPARTMENTS_parent[,id_type[1]]],
+                    collapse = ",")
+  nMapped <- sum(genes %in% COMPARTMENTS_parent[,id_type[1]])
   
-  if(sum(COMPARTMENTS_parent$SYMBOL %in% as.character(genes)) == 0){
+  if(sum(COMPARTMENTS_parent[,id_type[1]] %in% as.character(genes)) == 0){
     return(NULL)
   } else {
     enrichment <- lapply(
-      unique(
-        COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc]),
+      na.omit(unique(
+        COMPARTMENTS_parent$compartment[COMPARTMENTS_parent$calc])),
       function(x){
-        successes.sample <- COMPARTMENTS_parent %>% 
+        successes.sample <- COMPARTMENTS_parent[COMPARTMENTS_parent[,id_type[1]] %in% 
+                                                  genes,] %>% 
           dplyr::filter(.data$compartment == x) %>% 
-          dplyr::filter(
-            .data$SYMBOL %in% genes 
-          ) %>% 
+          # dplyr::filter(
+          #   .data$SYMBOL %in% genes 
+          # ) %>% 
           unique() %>% 
           nrow() # How many times term 'i' occurred in sample
         
@@ -79,7 +98,7 @@ compartmentData <- function(genes, bkgd = NULL,
         failure <- bkgd_size - successes.bkgd  
         #Number of peptides in background minus the peptides with that term
         
-        sampleSize <- length(genes)
+        sampleSize <- nMapped
         
         samplep <- stats::phyper(successes.sample,
                                  successes.bkgd,
@@ -91,10 +110,10 @@ compartmentData <- function(genes, bkgd = NULL,
           dplyr::filter(.data$compartment == x) %>% 
           dplyr::filter(
             .data$SYMBOL %in% genes 
-            ) %>% 
+          ) %>% 
           dplyr::select(
-              .data$SYMBOL
-            ) %>% 
+            .data$SYMBOL
+          ) %>% 
           unique()
         
         return(
@@ -106,9 +125,10 @@ compartmentData <- function(genes, bkgd = NULL,
         )  
       }) %>% 
       dplyr::bind_rows() %>%
-    #  dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
+      #  dplyr::mutate(p = ifelse(.data$p == 0, 1, .data$p)) %>% 
       dplyr::mutate(FDR = p.adjust(.data$p),
-                    Significant = ifelse(.data$FDR < significanceThresh, T, F)
+                    Significant = ifelse(.data$FDR < significanceThresh &
+                                           .data$n > 0, T, F)
       ) %>% 
       dplyr::arrange(.data$FDR) %>% 
       dplyr::select(.data$Compartment, .data$p,
@@ -137,7 +157,10 @@ compartmentData <- function(genes, bkgd = NULL,
         as.data.frame()
     }
     
-    return(enrichment)
+    return(list(unmapped = unmapped,
+                nMapped = nMapped, 
+                enrichment = enrichment)
+    )
   }
 }
 
@@ -199,7 +222,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   }
   
   
-  if(aspect== "Endosomal system"){
+  if(aspect[1] == "Endosomal system"){
     
     if("Golgi apparatus" %in% compsDat$Compartment){
       # Golgi selected randomly as an example not in trafficking subset
@@ -261,7 +284,6 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Mitochondrion", 262.3, 132.445, 242.1, 1622.4 -  1164.8),
       vis_organelles("Endosome", 324.469, 493.7, 315.3, 1622.4 -  699.874),
       vis_organelles("Intracellular vesicle", 59.3, 59.3, 744.2, 1622.4 -  258.5),
-      vis_organelles("Ribosome", 89.7, 109, 583.8, 1622.4 - 1321.5),
       vis_organelles("Plasma membrane", 1626.8, 1499, 72.4, 60),
       vis_organelles("Lysosome", 144.4, 140.9, 285.3, 1622.4 - 893.1),
       vis_organelles("Peroxisome", 143.5, 146.4, 572.9, 1622.4 - 921.8),
@@ -269,6 +291,19 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
       vis_organelles("Endoplasmic reticulum", 532.2, 284.2, 814.6, 696.72),
       vis_organelles("Golgi apparatus", 479.7, 208.4, 836.5, 1083.75)
     ) 
+    
+    if("Ribosome" %in% compsDat$Compartment){
+     df <-  cbind(df,
+            vis_organelles("Ribosome", 89.7, 109, 583.8, 1622.4 - 1321.5))
+    } else {
+      df <- cbind(df,
+                  data.frame(
+                    Ribosome_x = c(583.8, 583.8, 673.5, 673.5),
+                    Ribosome_y = c(300.9, 409.9, 409.9, 300.9),
+                    Ribosome = c(1L, 1L, 1L, 1L)
+                  )
+      )
+    }
     
     img <- png::readPNG(system.file("extdata",
                                     "CELL_scaled.png",
@@ -349,9 +384,9 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
                                                            c("right", "left"),
                                                          0,
                                                          45),
-                                              hjust = ifelse(legend.pos %in% c("right", "left"),
-                                                             0,
-                                                             1)),
+                                                       hjust = ifelse(legend.pos %in% c("right", "left"),
+                                                                      0,
+                                                                      1)),
                    # legend.key.height = grid::unit(0.1, "cm"),
                    # legend.key.width = grid::unit(ifelse(legend.pos %in% c("right", "left"),
                    #                                0.1,
@@ -374,7 +409,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   }
   
   if(labels == T){
-    if(aspect == "Endosomal system"){
+    if(aspect[1] == "Endosomal system"){
       labels_df <-  data.frame(
         label = c("Early Endosome", "Late Endosome",
                   "Vesicle", "Recycling Endosome",
@@ -416,4 +451,57 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
   
   return(g)
   
+}
+
+
+#' Plot Upset plot of compartment annotations overlap of genes
+#'
+#' @param compsDat Dataframe output from compartmentData
+#'
+#' @return list containing upset plot and associated data
+#' @export
+#'
+#' @importFrom dplyr .data select mutate group_by summarise n filter arrange desc
+#' @importFrom tidyr pivot_wider separate_rows
+#' @importFrom UpSetR upset 
+#' @importFrom magrittr `%>%`
+#' 
+plotOverlap <- function(compsDat){
+  upsetFormat <- compsDat %>% 
+    dplyr::select(.data$Compartment, Symbol) %>% 
+    tidyr::separate_rows(.data$Symbol, sep = ",") %>% 
+    dplyr::mutate(value = 1) %>% 
+    tidyr::pivot_wider(names_from="Compartment",
+                       values_fill = 0) 
+  
+  upsetPlot <- UpSetR::upset(
+    as.data.frame(upsetFormat),
+    order.by = "freq",
+    nsets = ncol(upsetFormat)-1,
+    nintersects = 15,
+    text.scale = 2,
+    mb.ratio = c(0.5,0.5)
+  )
+  
+  upsetDat <- compsDat %>% 
+    dplyr::select(.data$Compartment, .data$Symbol) %>% 
+    tidyr::separate_rows(.data$Symbol, sep = ",") %>% 
+    dplyr::group_by(.data$Symbol) %>% 
+    dplyr::summarise(Compartment = 
+                       paste(.data$Compartment,
+                             collapse = ",")
+    ) %>% 
+    dplyr::group_by(.data$Compartment) %>% 
+    dplyr::summarise(Symbol = 
+                       paste(.data$Symbol,
+                             collapse = ","),
+                     OverlapSize = dplyr::n()) %>%
+    dplyr::filter(Symbol != "") %>% 
+    dplyr::arrange(dplyr::desc(.data$OverlapSize))
+  
+  return(list(
+    upsetPlot = upsetPlot,
+    upsetDat = upsetDat
+  )
+  )
 }

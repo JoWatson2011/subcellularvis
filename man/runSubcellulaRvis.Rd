@@ -8,11 +8,12 @@ runSubcellulaRvis(
   compsDat,
   colScheme_low,
   colScheme_high,
-  trafficking = F,
+  aspect = c("Whole cell", "Endosomal system"),
   text_size = 2,
   legend = T,
   legend.pos = "right",
-  labels = T
+  labels = T,
+  significanceThresh = 0.05
 )
 }
 \arguments{
@@ -22,7 +23,8 @@ runSubcellulaRvis(
 
 \item{colScheme_high}{High value (i.e. most statistically significant) of colour scheme}
 
-\item{trafficking}{Logical; Visualise endolysosome system?}
+\item{aspect}{Character; either "Whole cell" or "Endosomal system.
+Latter will calculate enrichment within endosomal system.}
 
 \item{text_size}{Size of text if using}
 

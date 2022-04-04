@@ -7,9 +7,12 @@
 compartmentData(
   genes,
   bkgd = NULL,
-  trafficking = F,
+  id_type = c("SYMBOL", "UNIPROT"),
+  aspect = c("Whole cell", "Endosomal systems"),
   subAnnots = F,
-  organism = c("Human", "Mouse", "Drosophila", "Yeast", "Rat", "Xenopus")
+  organism = c("Human", "Mouse", "Drosophila", "Yeast", "Rat", "Xenopus"),
+  annotationSource = c("Gene Ontology", "Human Protein Atlas"),
+  significanceThresh = 0.05
 )
 }
 \arguments{
@@ -17,11 +20,18 @@ compartmentData(
 
 \item{bkgd}{background population. Defaults to size of species library}
 
-\item{trafficking}{Logical; Calculate enrichment within endolysosome system?}
+\item{id_type}{Character; either "SYMBOL" or "UNIPROT", relating to identifier type of gene list.}
+
+\item{aspect}{Character; either "Whole cell" or "Endosomal system.
+Latter will calculate enrichment within endosomal system. system?}
 
 \item{subAnnots}{Logical; Calculate enrichment on all terms, not summarised}
 
 \item{organism}{One of "Human", "Mouse",  "Drosophila", "Yeast", "Rat", "Xenopus"}
+
+\item{annotationSource}{Annotation source, Gene Ontology or (if organism = "Human") the Human Protein Atlas}
+
+\item{significanceThresh}{Threshold for FDR statistical significance. Default is 0.05}
 }
 \value{
 data frame

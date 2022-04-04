@@ -3,9 +3,10 @@
 \docType{data}
 \name{Human_exampleGenes}
 \alias{Human_exampleGenes}
-\title{Human gene list to be used as example input}
+\title{Human gene list to be used as example input
+Taken from Uniprot; proteins annotated as GPI anchored}
 \format{
-A data frame with 346 rows and 1 variables:
+A data frame with 139 rows and 1 variables:
 \describe{
 \item{v1}{Human genes}
 ...
@@ -16,5 +17,6 @@ Human_exampleGenes
 }
 \description{
 Human gene list to be used as example input
+Taken from Uniprot; proteins annotated as GPI anchored
 }
 \keyword{datasets}

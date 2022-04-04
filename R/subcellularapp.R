@@ -3,7 +3,7 @@
 #' @param ... empty
 #'
 #' @import shiny 
-#' @importFrom dplyr mutate 
+#' @importFrom dplyr mutate left_join select
 #' @importFrom rlang .data
 #' @importFrom shinythemes shinytheme
 #' @importFrom htmltools br p tagList img a strong
@@ -12,6 +12,8 @@
 #' @importFrom stats na.omit
 #' @importFrom plotly plotlyOutput renderPlotly ggplotly
 #' @importFrom stringi stri_split
+#' @importFrom purrr reduce splice
+#' @importFrom formattable formattable color_tile formattableOutput renderFormattable
 #'
 #' @return Shiny App
 #' @export
@@ -26,26 +28,43 @@ subcellularapp <- function(...){
       shiny::sidebarPanel(
         shiny::selectInput(inputId = "input_organism",
                            label = "Organism",
-                           choices = c("Human", "Mouse", "Drosophila", "Yeast", "Rat", "Xenopus"),
+                           choices = c("Human", "Mouse", "Drosophila", 
+                                       "Yeast", "Rat", "Xenopus"),
                            selected = "Human",
                            multiple = F),
-        shiny::textAreaInput(inputId = "input_genes_text",
-                             label = "Input genes,\none per line"),
-        
+        conditionalPanel(
+          condition = "input.input_organism == 'Human'",
+          shiny::selectInput(inputId = "annotationSource",
+                             label = "Annotation Source",
+                             choices = c("Gene Ontology", 
+                                         "Human Protein Atlas"),
+                             selected = "Gene Ontology",
+                             multiple = F
+          )
+        ),
+        shiny::selectInput(inputId = "identifierType",
+                           label = "Identifier type",
+                           choices = c("HGNC Symbol",
+                                       "UniProt ID"),
+                           selected = "HGNC Symbol",
+                           multiple = F),
+        shiny::actionLink(inputId = "explainIdentifier",
+                          label = "What if my list uses different identifiers?",
+                          icon = shiny::icon("question")),
         shiny::actionLink(inputId = "exampleGenes",
                           label = "Example gene set"),
-        htmltools::br(),
+        shiny::textAreaInput(inputId = "input_genes_text",
+                             label = "Input genes,\none per line"),
         shiny::fileInput(inputId = "input_genes_file",
                          accept = ".csv",
                          label = "Input genes (file)",
                          multiple = F,
-                         placeholder = ".csv file of genes; 1 column with HGNC symbols"),
-        htmltools::br(),
+                         placeholder = ".csv file of genes; 1 column, one gene per row"),
         shiny::fileInput(inputId = "input_bkgd_file",
                          #accept = ".csv",
                          label = "Background population (optional)",
                          multiple = F,
-                         placeholder = ".csv file of genes; 1 column with HGNC symbols", ),
+                         placeholder = ".csv file of genes; 1 column, one gene per row", ),
         shiny::actionLink(inputId = "explainBkgd",
                           label = "What is the background?",
                           icon = shiny::icon("question")),
@@ -71,7 +90,7 @@ subcellularapp <- function(...){
         tags$head(tags$style("#checkInputLength{color: red;
                                   }"
         )
-        ),
+        )
       ),
       
       shiny::mainPanel(
@@ -87,70 +106,12 @@ subcellularapp <- function(...){
             ),
             htmltools::br(),htmltools::br(),
             htmltools::p("Supported by:"),
-            htmltools::img(src="https://bbsrc.ukri.org/bbsrc/includes/themes/BBSRC/images/logo-1.png",
-                           width = "200px"),
+            htmltools::img(src="https://www.ukri.org/wp-content/uploads/2020/06/our-council-logo-bbsrc.png",
+                           width = "75px"),
             htmltools::img(src="https://www.staffnet.manchester.ac.uk/brand/visual-identity/logo/logo_big.gif",
                            width = "200px"),
             htmltools::img(src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Wellcome_Trust_logo.svg/800px-Wellcome_Trust_logo.svg.png",
                            width = "75px")
-          ),
-          
-          shiny::tabPanel("Plot", 
-                          shiny::fluidRow(
-                            shiny::column(width = 6,
-                                          textOutput("checkGenesMap3"),
-                                          tags$head(tags$style("#checkGenesMap3{color: red;
-                                  }"
-                                          )
-                                          )
-                            )
-                          ),
-                          shiny::fluidRow(
-                            shiny::column(width = 12,
-                                          plotly::plotlyOutput(outputId = "plot_cell",
-                                                               width = "600px")
-                            )
-                          ),
-                          
-                          shiny::fluidRow(
-                            shiny::column(width = 6,
-                                          htmltools::p(htmltools::strong("Colour scale:")),
-                                          colourpicker::colourInput(inputId = "colScheme_low", 
-                                                                    label = "Colour scale low",
-                                                                    value = "#609377"),
-                                          colourpicker::colourInput(inputId = "colScheme_high", 
-                                                                    label = "Colour scale high",
-                                                                    value = "#d8b2b2"),
-                                          # shiny::textInput(inputId = "colScheme_low", 
-                                          #           label = "Colour scale low",
-                                          #           value = "#609377"),
-                                          # shiny::textInput(inputId = "colScheme_high", 
-                                          #           label = "Colour scale high",
-                                          #           value = "#d8b2b2"),
-                                          shiny::actionButton(inputId = "remakePlot",
-                                                              label = "Remake Plot")
-                            ),
-                            shiny::column(width = 6,  
-                                          htmltools::p(htmltools::strong("Options for export")),
-                                          shiny::checkboxInput("includeLegend",
-                                                               "Include legend?",
-                                                               T),
-                                          shiny::selectInput("legendPos",
-                                                             "Legend positon",
-                                                             list("bottom", "right", "left", "top"),
-                                                             "right"),
-                                          shiny::checkboxInput("includeLabels",
-                                                               "Label compartments?",
-                                                               T),
-                                          shiny::numericInput("plotWidth", "Plot width, cm", 15),
-                                          shiny::numericInput("plotHeight", "Plot height, cm", 10),
-                                          shiny::numericInput("textSize", "Text size", 3),
-                                          shiny::selectInput("export_fileType", "Image file type",
-                                                             choices = list("pdf", "tiff", "png", "jpeg")),
-                                          shiny::downloadButton(outputId = "downloadPlot", 
-                                                                label = "Download")
-                            )
-                          ),
           ),
           shiny::tabPanel("Table",
                           shiny::fluidRow(
@@ -160,6 +121,13 @@ subcellularapp <- function(...){
                                   }"
                                           )
                                           )
+                            )
+                          ),
+                          shiny::fluidRow(
+                            shiny::column(width = 6,
+                                          textOutput("noGenesMapped1"),
+                                          tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
+                                          textOutput("unmappedGenes1")
                             )
                           ),
                           shiny::fluidRow(width = 6,
@@ -179,8 +147,75 @@ subcellularapp <- function(...){
                           ),
           ),
           shiny::tabPanel(
+            "Plot", 
+            shiny::fluidRow(
+              shiny::column(width = 6,
+                            textOutput("checkGenesMap3"),
+                            tags$head(tags$style("#checkGenesMap3{color: red;
+                                  }"
+                            )
+                            )
+              )
+            ),
+            shiny::fluidRow(
+              shiny::column(width = 12,
+                            plotly::plotlyOutput(outputId = "plot_cell",
+                                                 width = "600px")
+              )
+            ),
+            
+            shiny::fluidRow(
+              shiny::column(width = 6,
+                            htmltools::p(htmltools::strong("Colour scale:")),
+                            colourpicker::colourInput(inputId = "colScheme_low", 
+                                                      label = "Colour scale low",
+                                                      value = "#609377"),
+                            colourpicker::colourInput(inputId = "colScheme_high", 
+                                                      label = "Colour scale high",
+                                                      value = "#d8b2b2"),
+                            # shiny::textInput(inputId = "colScheme_low", 
+                            #           label = "Colour scale low",
+                            #           value = "#609377"),
+                            # shiny::textInput(inputId = "colScheme_high", 
+                            #           label = "Colour scale high",
+                            #           value = "#d8b2b2"),
+                            shiny::actionButton(inputId = "remakePlot",
+                                                label = "Remake Plot")
+              ),
+              shiny::column(width = 6,  
+                            htmltools::p(htmltools::strong("Options for export")),
+                            shiny::checkboxInput("includeLegend",
+                                                 "Include legend?",
+                                                 T),
+                            shiny::selectInput("legendPos",
+                                               "Legend positon",
+                                               list("bottom", "right", "left", "top"),
+                                               "right"),
+                            shiny::checkboxInput("includeLabels",
+                                                 "Label compartments?",
+                                                 T),
+                            shiny::numericInput("plotWidth", "Plot width, cm", 15),
+                            shiny::numericInput("plotHeight", "Plot height, cm", 10),
+                            shiny::numericInput("textSize", "Text size", 3),
+                            shiny::selectInput("export_fileType", 
+                                               "Export image type",
+                                               choices = list("pdf",
+                                                              "svg",
+                                                              "tiff", 
+                                                              "png",
+                                                              "jpeg")),
+                            shiny::downloadButton(outputId = "downloadPlot", 
+                                                  label = "Download")
+              )
+            ),
+          ),
+          
+          shiny::tabPanel(
             "Full enrichment",
+            htmltools::p("Note: This enrichment is performed using GO annotations,
+                         even if Human Protein Atlas has been selected."),
             htmltools::br(),
+            
             shiny::fluidRow(
               shiny::column(width = 6,
                             textOutput("checkGenesMap2"),
@@ -191,6 +226,13 @@ subcellularapp <- function(...){
             ),
             shiny::fluidRow(
               shiny::column(width = 6,
+                            textOutput("noGenesMapped2"),
+                            tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
+                            textOutput("unmappedGenes2")
+              )
+            ),
+            shiny::fluidRow(
+              shiny::column(width = 6,
                             shiny::tableOutput(outputId = "fullEnrichment_df")
               ),
               shiny::column(width = 6,
@@ -198,8 +240,40 @@ subcellularapp <- function(...){
                             htmltools::p("Top 50 terms shown"),
                             shiny::downloadButton(outputId = "downloadFullEnrichment", 
                                                   label = "Export full results")
-              ),
+              )
+            )
+          ),
+          shiny::tabPanel(
+            "Overlap",
+            shiny::fluidRow(
+              shiny::column(width = 12, 
+                            shiny::plotOutput("upsetPlot"),
+                            shiny::textOutput("noIntersects"),
+                            height = "600px"
+              )
             ),
+            shiny::fluidRow(
+              shiny::column(width = 12,
+                            htmltools::br(),
+                            shiny::tableOutput("upsetData")
+              )
+            ),
+            shiny::fluidRow(
+              shiny::column(width = 3,
+                            shiny::selectInput("exportUpset_fileType",
+                                               "Image file type",
+                                               choices = list("tiff", 
+                                                              "png",
+                                                              "jpeg")),
+              ),
+              shiny::column(width = 3,
+                            shiny::downloadButton(outputId = "downloadUpsetPlot", 
+                                                  label = "Download plot")
+              ), 
+              shiny::column(width = 3,
+                            shiny::downloadButton(outputId = "downloadUpsetData", 
+                                                  label = "Download data"))
+            )
           ),
           shiny::tabPanel(
             "Help",
@@ -270,14 +344,18 @@ subcellularapp <- function(...){
   
   server <- function(input, output){
     
+    shiny::observe({
+      if(input$annotationSource == "Human Protein Atlas"){
+        updateSelectInput(inputId = "traffic",
+                          label = "Visualisation of...",
+                          choices = "Whole cell",
+                          selected ="Whole cell"
+        )
+      }
+    })
+    
     shiny::observeEvent(input$exampleGenes, {
       
-      # exampleGenes <- read.csv(paste0("data/",
-      #                                 input$input_organism,
-      #                                 "/exampleGenes.csv"),
-      #                          header = F,
-      #                          stringsAsFactors = F
-      # )[,1]
       if(input$input_organism == "Mouse"){
         exampleGenes <- subcellularvis::Mouse_exampleGenes[,1, drop = T]
       } else if(input$input_organism == "Human"){
@@ -297,11 +375,17 @@ subcellularapp <- function(...){
       shiny::updateTabsetPanel(inputId = "tabs", selected = "Help")
     })
     
+    shiny::observeEvent(input$explainIdentifier,{
+      shiny::updateTabsetPanel(inputId = "tabs", selected = "Help")
+    })
+    
     shiny::observeEvent(input$action_button, {
       
       plot_cell <- shiny::reactiveVal()
       
       file <- input$input_genes_file
+      
+      genes_tidy <<- ""
       
       if(!is.null(file)){
         genes_tidy <<- read.csv(file$datapath,
@@ -316,12 +400,12 @@ subcellularapp <- function(...){
       }
       output$checkInputEmpty <- shiny::renderText({
         if(!shiny::isTruthy(genes_tidy)){
-          shiny::validate("HGNC gene symbols need to be entered,\n one per line\nas .csv or in the text box.")
+          shiny::validate("Genes need to be entered,\n one per line\nas .csv or in the text box.")
         }
       })
       output$checkInputLength <- shiny::renderText({
         if(length(genes_tidy) == 1){
-          shiny::validate("More than one gene symbols need to be entered.")
+          shiny::validate("More than one gene needs to be entered.")
         }
       })
       
@@ -349,44 +433,70 @@ subcellularapp <- function(...){
           bkgd <<- NULL
         }
         
-        shiny::withProgress(message = "Calculating", value = 15, {
+        shiny::withProgress(message = "Calculating", value = 10, {
           tr <- isolate(input$traffic)
+          id <- isolate(input$identifierType)
           comps <<- subcellularvis::compartmentData(
             genes = genes_tidy,
             bkgd = bkgd,
+            id_type = ifelse(id == "HGNC Symbol", "SYMBOL", "UNIPROT"),
             #trafficking = input$traffic,
             aspect = tr,
             organism = input$input_organism,
+            annotationSource = input$annotationSource,
             significanceThresh = input$significanceThresh)
           
           comps_full <<- subcellularvis::compartmentData(
             genes = genes_tidy,
             bkgd = bkgd,
+            id_type = ifelse(id == "HGNC Symbol", "SYMBOL", "UNIPROT"),
             #trafficking = input$traffic,
             aspect = tr,
             subAnnots = T,
             organism = input$input_organism,
+            annotationSource = input$annotationSource,
             significanceThresh = input$significanceThresh)
         })
       }
       
-
+      output$noGenesMapped1 <-  
+        shiny::renderText({
+          if(!is.null(comps)){
+            paste("Number of genes mapped:", comps$nMapped)
+          }
+        })
+      output$noGenesMapped2 <-shiny::renderText({
+        if(!is.null(comps)){
+          paste("Number of genes mapped:", comps_full$nMapped)
+        }
+      })
+      output$unmappedGenes1 <- 
+        shiny::renderText({
+          if(!is.null(comps)){
+            paste("Genes not mapped:", comps$unmapped)
+          }
+        })
+      output$unmappedGenes2 <- shiny::renderText({
+        if(!is.null(comps)){
+          paste("Genes not mapped:", comps_full$unmapped)
+        }
+      })
       output$checkGenesMap1 <- shiny::renderText({
         if(is.null(comps)){
-          shiny::validate("Gene names don't map. Did you use HGNC symbol
-                          and select correct organism?")
+          shiny::validate("Gene names don't map. Did you use
+                          select correct organism and identifier type?")
         }
       })
       output$checkGenesMap2 <- shiny::renderText({
         if(is.null(comps)){
-          shiny::validate("Gene names don't map. Did you use HGNC symbol
-                          and select correct organism?")
+          shiny::validate("Gene names don't map. Did you use
+                          select correct organism and identifier type?")
         }
       })
       output$checkGenesMap3 <- shiny::renderText({
         if(is.null(comps)){
-          shiny::validate("Gene names don't map. Did you use HGNC symbol
-                          and select correct organism?")
+          shiny::validate("Gene names don't map. Did you use
+                          select correct organism and identifier type?")
         }
       })
       
@@ -421,27 +531,28 @@ subcellularapp <- function(...){
       output$compartment_df <- shiny::renderTable({
         req(comps)
         
-          dplyr::mutate(comps, Symbol = sapply(.data$Symbol, function(i) {
-            
-            vec <- na.omit(strsplit(i, ",")[[1]][1:7])
-            
-            if(length(vec) == 0){
-              vec <- ""
-            }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
-              vec <- paste(vec, collapse = ", ")
-            }else{
-              vec <- paste(c(vec, "..."), collapse = ", ")
-            }
-            
-            return(vec)
-            
-          })
-          )
-          # comps[,c("compartment",
-          # "p",
-          # "FDR",
-          # "FDR < 0.05")]
-       # })
+        dplyr::mutate(comps$enrichment, 
+                      Genes = sapply(comps$enrichment[,6], function(i) {
+          
+          vec <- na.omit(strsplit(i, ",")[[1]][1:7])
+          
+          if(length(vec) == 0){
+            vec <- ""
+          }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
+            vec <- paste(vec, collapse = ", ")
+          }else{
+            vec <- paste(c(vec, "..."), collapse = ", ")
+          }
+          
+          return(vec)
+          
+        })
+        )
+        # comps[,c("compartment",
+        # "p",
+        # "FDR",
+        # "FDR < 0.05")]
+        # })
       }, 
       digits = 5)
       
@@ -450,8 +561,9 @@ subcellularapp <- function(...){
           paste("CellVis_Enrichment_", Sys.Date(), ".csv", sep="")
         },
         content = function(file){
-          write.csv(comps, file)
-        })
+          write.csv(comps$enrichment, file)
+        },
+        contentType = "text/csv")
       
       
       
@@ -461,7 +573,7 @@ subcellularapp <- function(...){
         sig <- isolate(input$significanceThresh)
         shiny::withProgress(message = "Visualising", value = 15, {
           plot_cell(
-            runSubcellulaRvis(comps,
+            runSubcellulaRvis(comps$enrichment,
                               colScheme_low = input$colScheme_low,
                               colScheme_high = input$colScheme_high,
                               aspect = tr,
@@ -478,7 +590,7 @@ subcellularapp <- function(...){
       output$fullEnrichment_df <- shiny::renderTable({
         req(comps_full)
         dplyr::mutate(
-          comps_full[1:50,],
+          comps_full$enrichment[1:50,],
           Symbol =
             sapply(.data$Symbol, function(i) {
               vec <- na.omit(strsplit(i, ",")[[1]][1:7])
@@ -496,6 +608,37 @@ subcellularapp <- function(...){
       },
       digits = 5)
       
+      if(!is.null(comps)){
+        upset <<- subcellularvis::plotOverlap(comps$enrichment)
+      }
+      output$noIntersects <- renderText({
+        paste("15 /", nrow(upset$upsetDat), "intersects plotted")
+      })
+      output$upsetPlot <- renderPlot({
+        req(upset)
+        upset$upsetPlot
+      })
+      output$upsetData <- renderTable({
+        req(upset)
+        dplyr::mutate(
+          upset$upsetDat,
+          Symbol =
+            sapply(.data$Symbol, function(i) {
+              vec <- na.omit(strsplit(i, ",")[[1]][1:7])
+              if(length(vec) == 0){
+                vec <- ""
+              }else if(length(na.omit(strsplit(i, ",")[[1]])) < 8){
+                vec <- paste(vec, collapse = ", ")
+              }else{
+                vec <- paste(c(vec, "..."), collapse = ", ")
+              }
+              
+              return(vec)
+            })
+        )
+      })
+      
+      
     })
     
     
@@ -504,7 +647,7 @@ subcellularapp <- function(...){
         plot_cell <- shiny::reactiveVal()
         tr <- isolate(input$traffic)
         plot_cell(
-          runSubcellulaRvis(comps,
+          runSubcellulaRvis(comps$enrichment,
                             colScheme_low = input$colScheme_low,
                             colScheme_high = input$colScheme_high,
                             text_size = 6,
@@ -518,7 +661,7 @@ subcellularapp <- function(...){
     })
     
     
-    # Export  visualisation
+    # Export  visualisations & data
     output$downloadPlot <- shiny::downloadHandler(
       filename = function() {
         paste("CellVis_", Sys.Date(), input$export_fileType, sep="")
@@ -541,11 +684,12 @@ subcellularapp <- function(...){
     shiny::observeEvent(input$export_fileType,{
       output$downloadPlot <- shiny::downloadHandler(
         filename = function() {
-          paste("CellVis_", Sys.Date(),".", input$export_fileType, sep="")
+          paste("CellVis_", Sys.Date(),".", 
+                input$export_fileType, sep="")
         },
         content = function(file) {
           ggplot2::ggsave(file, 
-                          plot = runSubcellulaRvis(comps,
+                          plot = runSubcellulaRvis(comps$enrichment,
                                                    colScheme_low = input$colScheme_low,
                                                    colScheme_high = input$colScheme_high,
                                                    text_size = input$textSize,
@@ -562,23 +706,63 @@ subcellularapp <- function(...){
         },
         contentType = ifelse(input$export_fileType == "pdf", 
                              "application/pdf",
-                             paste0("image/", input$export_fileType))
+                             ifelse(input$export_fileType == "svg", 
+                                    "svg+xml", 
+                                    paste0("image/", 
+                                           input$export_fileType)
+                             )
+        )
       )
-      
-      
     })
     
+    output$downloadUpsetPlot <- shiny::downloadHandler(
+      filename = function() {
+        paste("CellVis_Upset_", Sys.Date(), ".",
+              input$exportUpset_fileType, sep="")
+      },
+      content = function(file) {
+        
+        # if(names(dev.cur()) != "null device"){
+        #   dev.off()
+        # }
+        
+        if(input$exportUpset_fileType == "png"){
+          png(file, width = 600)
+          print(upset$upsetPlot)
+          dev.off()
+        }else if(input$exportUpset_fileType == "tiff"){
+          tiff(file, width = 600)
+          print(upset$upsetPlot)
+          dev.off()
+        }else if(input$exportUpset_fileType == "jpeg"){
+          jpeg(file, width = 600)
+          print(upset$upsetPlot)
+          dev.off()
+        }
+      },
+      contentType = paste0("image/", input$exportUpset_fileType)
+    )
+    
+    output$downloadUpsetData <- shiny::downloadHandler(
+      filename = function() {
+        paste("CellVis_UpsetData_", Sys.Date(), ".csv", sep="")
+      },
+      content = function(file){
+        write.csv(upset$upsetDat, file)
+      },
+      contentType = "text/csv")
     
     output$downloadFullEnrichment <- shiny::downloadHandler(
       filename = function() {
         paste("CellVis_fullEnrichment_", Sys.Date(), ".csv", sep="")
       },
       content = function(file){
-        write.csv(comps_full, file)
-      })
-    
-    
+        write.csv(comps_full$enrichment, file)
+      },
+      contentType = "text/csv")
   }
+  
+  
   
   
   ### RUN THE APP ###
