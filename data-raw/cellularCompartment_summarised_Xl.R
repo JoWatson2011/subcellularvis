@@ -50,14 +50,14 @@ COMPARTMENTS_traffic_offspring <-
 
 Xenopus_traffic_annots <- AnnotationDbi::select(org.Xl.eg.db,
                                         COMPARTMENTS_traffic_offspring$ID,
-                                        c("GO", "SYMBOL"),
+                                        c("GO", "SYMBOL", "UNIPROT"),
                                         "GO") %>%
-  dplyr::select(GO, SYMBOL) %>%
+  dplyr::select(GO, SYMBOL, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_traffic_offspring,
         by.x = "GO",
         by.y = "ID") %>%
-  dplyr::select(SYMBOL, compartment) %>%
+  dplyr::select(SYMBOL,UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -115,12 +115,12 @@ COMPARTMENTS_offspring <-
 
 Xenopus_annots <- AnnotationDbi::select(org.Xl.eg.db,
                                 COMPARTMENTS_offspring$ID,
-                                c("GO", "SYMBOL"),
+                                c("GO", "SYMBOL", "UNIPROT"),
                                 "GO") %>%
-  dplyr::select(GO, SYMBOL) %>%
+  dplyr::select(GO, SYMBOL, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_offspring, by.x = "GO", by.y = "ID") %>%
-  dplyr::select(SYMBOL, compartment) %>%
+  dplyr::select(SYMBOL, UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -140,11 +140,11 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
 
 Xenopus_traffic_subannots <- AnnotationDbi::select(org.Xl.eg.db,
                                                  traffic_subannots_terms$GOID,
-                                                 "SYMBOL",
+                                                 c("SYMBOL","UNIPROT"),
                                                  "GO") %>%
   left_join(traffic_subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                SYMBOL,
+                SYMBOL,UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
@@ -161,11 +161,11 @@ subannots_terms <- AnnotationDbi::select(GO.db,
 
 Xenopus_subannots <- AnnotationDbi::select(org.Xl.eg.db,
                                          subannots_terms$GOID,
-                                         "SYMBOL",
+                                         c("SYMBOL","UNIPROT"),
                                          "GO") %>%
   left_join(subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                SYMBOL,
+                SYMBOL,UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()

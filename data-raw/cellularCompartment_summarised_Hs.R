@@ -31,13 +31,12 @@ COMPARTMENTS_traffic_offspring <- lapply(names(COMPARTMENTS_traffic_offspring), 
   
 Human_traffic_annots <- AnnotationDbi::select(org.Hs.eg.db, 
                                          COMPARTMENTS_traffic_offspring$ID,
-                                         c("GO", "SYMBOL"),
+                                         c("GO", "SYMBOL", "UNIPROT"),
                                          "GO") %>% 
-  dplyr::select(GO, SYMBOL) %>% 
+  dplyr::select(GO, SYMBOL, UNIPROT) %>% 
   unique() %>% 
   merge(COMPARTMENTS_traffic_offspring, by.x = "GO", by.y = "ID") %>% 
-  dplyr::select(SYMBOL, compartment) %>% 
-  na.omit() %>% 
+  dplyr::select(compartment, SYMBOL, UNIPROT) %>% 
   distinct()
 
 ### Whole cell 
@@ -67,19 +66,17 @@ COMPARTMENTS_offspring <- lapply(names(COMPARTMENTS_offspring), function(i){
 
 Human_annots <- AnnotationDbi::select(org.Hs.eg.db, 
                                         COMPARTMENTS_offspring$ID,
-                                        c("GO", "SYMBOL"),
+                                        c("GO", "SYMBOL", "UNIPROT"),
                                         "GO") %>% 
-  dplyr::select(GO, SYMBOL) %>% 
-  unique() %>% 
+  dplyr::select(GO, SYMBOL, UNIPROT) %>% 
+  distinct() %>% 
   merge(COMPARTMENTS_offspring, by.x = "GO", by.y = "ID") %>% 
-  dplyr::select(SYMBOL, compartment) %>% 
-  na.omit()  %>% 
+  dplyr::select(compartment, SYMBOL, UNIPROT) %>% 
   distinct()
 
-########################################
+#########################
 ### Detailed annotations
-###
-#########################################
+#########################
 
 #Trafficking
 traffic_subannots_terms <- AnnotationDbi::select(
@@ -95,11 +92,11 @@ traffic_subannots_terms <- AnnotationDbi::select(
 Human_traffic_subannots <- AnnotationDbi::select(
   org.Hs.eg.db,
   traffic_subannots_terms$GOID,
-  "SYMBOL",
+  c("SYMBOL","UNIPROT"),
   "GO"
 ) %>% 
   left_join(traffic_subannots_terms, by = c("GO" = "GOID")) %>% 
-  dplyr::select(GOID = GO, SYMBOL, 
+  dplyr::select(GOID = GO, SYMBOL, UNIPROT,
                 compartment = TERM, group = compartment)  %>% 
   distinct()
 
@@ -117,11 +114,63 @@ subannots_terms <- AnnotationDbi::select(
 Human_subannots <- AnnotationDbi::select(
   org.Hs.eg.db,
   subannots_terms$GOID,
-  "SYMBOL",
+  c("SYMBOL","UNIPROT"),
   "GO"
 ) %>% 
   left_join(subannots_terms, by = c("GO" = "GOID")) %>% 
-  dplyr::select(GOID = GO, SYMBOL, 
+  dplyr::select(GOID = GO, SYMBOL, UNIPROT,
                 compartment = TERM, group = compartment)  %>% 
+  distinct()
+
+#################################
+# Human Protein Atlas annotations
+#################################
+
+hpa <- readr::read_tsv("data-raw/proteinatlas_subcellular_location.tsv")
+
+## Some of the GO terms in hpa aren't
+# child terms to those specified above
+# so I have manually assigned them / 
+# used HPA website for categories below 
+
+orphanHPAAnnots <- data.frame(
+  stringsAsFactors = FALSE,
+  GOTerm = c("Aggresome (GO:0016235)",
+             "Cell Junctions (GO:0030054)",
+             "Focal adhesion sites (GO:0005925)",
+             "Kinetochore (GO:0000776)",
+             "Lipid droplets (GO:0005811)","Midbody (GO:0030496)",
+             "Midbody ring (GO:0090543)",
+             "Mitotic chromosome (GO:0005694)",
+             "Rods & Rings ()",
+             "Vesicles (GO:0043231)"),
+  # GOID = c("GO:0016235","GO:0030054",
+  #          "GO:0005925","GO:0000776","GO:0005811","GO:0030496",
+  #          "GO:0090543","GO:0005694",NA,"GO:0043231"),
+  NewTerm = c("Cytoplasm", "Plasma membrane",
+              "Plasma membrane", "Cytoplasm",
+              NA, "Cytoskeleton", "Cytoplasm",
+              "Cytoplasm", "Cytoplasm",
+              "Intracellular vesicles"),
+  n = c(19L, 313L, 129L, 5L, 39L, 53L, 30L, 69L, 19L, 1983L)
+)
+
+hpa_tidy <- hpa %>% 
+  filter(Reliability != "Uncertain") %>% 
+  select(Gene, `Gene name`, GOTerm = `GO id`) %>% 
+  separate_rows(GOTerm, sep = ";") %>% 
+  mutate(GOID = gsub("^.*\\(", "", gsub(")$", "", GOTerm))
+         ) %>% 
+  left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>% 
+  left_join(orphanHPAAnnots, by = c("GOTerm")) %>% 
+  mutate(compartment = ifelse(is.na(compartment), NewTerm, compartment)) 
+
+Human_HPA_annots <- hpa_tidy %>% 
+  select(SYMBOL = `Gene name`, compartment)
+Human_HPA_annots <- AnnotationDbi::select(org.Hs.eg.db, 
+                                          Human_HPA_annots$SYMBOL,
+                                            c("UNIPROT"),
+                                            "SYMBOL") %>% 
+  left_join(Human_HPA_annots, by = "SYMBOL") %>% 
   distinct()
 

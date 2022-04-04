@@ -50,14 +50,14 @@ COMPARTMENTS_traffic_offspring <-
 
 Yeast_traffic_annots <- AnnotationDbi::select(org.Sc.sgd.db,
                                         COMPARTMENTS_traffic_offspring$ID,
-                                        c("GO", "GENENAME"),
+                                        c("GO", "GENENAME", "UNIPROT"),
                                         "GO") %>%
-  dplyr::select(GO, GENENAME) %>%
+  dplyr::select(GO, GENENAME, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_traffic_offspring,
         by.x = "GO",
         by.y = "ID") %>%
-  dplyr::select(GENENAME, compartment) %>%
+  dplyr::select(SYMBOL = GENENAME,UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -115,12 +115,12 @@ COMPARTMENTS_offspring <-
 
 Yeast_annots <- AnnotationDbi::select(org.Sc.sgd.db,
                                 COMPARTMENTS_offspring$ID,
-                                c("GO", "GENENAME"),
+                                c("GO", "GENENAME", "UNIPROT"),
                                 "GO") %>%
-  dplyr::select(GO, GENENAME) %>%
+  dplyr::select(GO, GENENAME, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_offspring, by.x = "GO", by.y = "ID") %>%
-  dplyr::select(GENENAME, compartment) %>%
+  dplyr::select(SYMBOL = GENENAME, UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -140,11 +140,12 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
 
 Yeast_traffic_subannots <- AnnotationDbi::select(org.Sc.sgd.db,
                                                  traffic_subannots_terms$GOID,
-                                                 "GENENAME",
+                                                 c("GENENAME","UNIPROT"),
                                                  "GO") %>%
   left_join(traffic_subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                GENENAME,
+                SYMBOL = GENENAME,
+                UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
@@ -161,11 +162,12 @@ subannots_terms <- AnnotationDbi::select(GO.db,
 
 Yeast_subannots <- AnnotationDbi::select(org.Sc.sgd.db,
                                          subannots_terms$GOID,
-                                         "GENENAME",
+                                         c("GENENAME","UNIPROT"),
                                          "GO") %>%
   left_join(subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                GENENAME,
+                SYMBOL = GENENAME,
+                UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()

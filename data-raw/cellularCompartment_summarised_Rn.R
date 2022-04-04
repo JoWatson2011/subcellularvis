@@ -50,14 +50,14 @@ COMPARTMENTS_traffic_offspring <-
 
 Rat_traffic_annots <- AnnotationDbi::select(org.Rn.eg.db,
                                             COMPARTMENTS_traffic_offspring$ID,
-                                            c("GO", "SYMBOL"),
+                                            c("GO", "SYMBOL", "UNIPROT"),
                                             "GO") %>%
-  dplyr::select(GO, SYMBOL) %>%
+  dplyr::select(GO, SYMBOL, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_traffic_offspring,
         by.x = "GO",
         by.y = "ID") %>%
-  dplyr::select(SYMBOL, compartment) %>%
+  dplyr::select(SYMBOL,UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -116,12 +116,12 @@ COMPARTMENTS_offspring <-
 
 Rat_annots <- AnnotationDbi::select(org.Rn.eg.db,
                                     COMPARTMENTS_offspring$ID,
-                                    c("GO", "SYMBOL"),
+                                    c("GO", "SYMBOL", "UNIPROT"),
                                     "GO") %>%
-  dplyr::select(GO, SYMBOL) %>%
+  dplyr::select(GO, SYMBOL, UNIPROT) %>%
   unique() %>%
   merge(COMPARTMENTS_offspring, by.x = "GO", by.y = "ID") %>%
-  dplyr::select(SYMBOL, compartment) %>%
+  dplyr::select(SYMBOL, UNIPROT, compartment) %>%
   na.omit() %>%
   distinct()
 
@@ -142,11 +142,11 @@ traffic_subannots_terms <- AnnotationDbi::select(GO.db,
 
 Rat_traffic_subannots <- AnnotationDbi::select(org.Rn.eg.db,
                                                traffic_subannots_terms$GOID,
-                                               "SYMBOL",
+                                               c("SYMBOL","UNIPROT"),
                                                "GO") %>%
   left_join(traffic_subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                SYMBOL,
+                SYMBOL,UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
@@ -155,7 +155,7 @@ Rat_traffic_subannots <- AnnotationDbi::select(org.Rn.eg.db,
 # Whole cell
 subannots_terms <- AnnotationDbi::select(GO.db,
                                          COMPARTMENTS_offspring$ID,
-                                         "TERM",
+                                         c("TERM"),
                                          "GOID") %>%
   distinct() %>%
   left_join(COMPARTMENTS_offspring, by = c("GOID" = "ID")) %>%
@@ -163,11 +163,11 @@ subannots_terms <- AnnotationDbi::select(GO.db,
 
 Rat_subannots <- AnnotationDbi::select(org.Rn.eg.db,
                                        subannots_terms$GOID,
-                                       "SYMBOL",
+                                       c("SYMBOL","UNIPROT"),
                                        "GO") %>%
   left_join(subannots_terms, by = c("GO" = "GOID")) %>%
   dplyr::select(GOID = GO,
-                SYMBOL,
+                SYMBOL,UNIPROT,
                 compartment = TERM,
                 group = compartment) %>%
   distinct()
