@@ -8,7 +8,7 @@ compartmentData(
   genes,
   bkgd = NULL,
   id_type = c("SYMBOL", "UNIPROT"),
-  aspect = c("Whole cell", "Endosomal systems"),
+  aspect = c("Whole cell", "Endosomal system"),
   subAnnots = F,
   organism = c("Human", "Mouse", "Drosophila", "Yeast", "Rat", "Xenopus"),
   annotationSource = c("Gene Ontology", "Human Protein Atlas"),

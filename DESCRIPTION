@@ -27,6 +27,7 @@ Imports:
     purrr,
     rlang,
     shiny,
+    shinyjs,
     shinythemes,
     stats,
     stringi,
