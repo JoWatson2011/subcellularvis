@@ -662,7 +662,10 @@ server <- function(input, output){
         upset <<- subcellularvis::plotOverlap(comps$enrichment)
       }
       output$noIntersects <- renderText({
-        paste("15 /", nrow(upset$upsetDat), "intersects plotted")
+        paste(
+          ifelse(nrow(upset$upsetDat) < 15, nrow(upset$upsetDat), 15),
+          "/",
+          nrow(upset$upsetDat), "intersects plotted")
       })
       output$upsetPlot <- renderPlot({
         req(upset)
