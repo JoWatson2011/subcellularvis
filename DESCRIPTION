@@ -18,6 +18,7 @@ Imports:
     dplyr,
     formattable,
     ggplot2,
+    grDevices,
     grid,
     htmltools,
     magrittr,
