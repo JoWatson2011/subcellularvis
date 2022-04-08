@@ -12,61 +12,6 @@ named_group_split <- function(.tbl, ...) {
 
 loc <- readr::read_tsv("data-raw/proteinatlas_subcellular_location.tsv")
 
-nuc_loc <- loc %>% 
-  filter(Reliability != "Uncertain") %>% 
-  select(Gene, `Gene name`, `Main location`,
-         `Additional location`, `GO id`) %>% 
-  pivot_longer(c(`Main location`, `Additional location`), 
-              names_to = "type", values_to = "location") %>% 
-  separate_rows(location, sep = ";") %>% 
-  filter(grepl("[Nn]uc", location)) 
-
-nuc_go <- nuc_loc %>% 
-  separate_rows(`GO id`, sep = ";") %>%
-  separate(`GO id`, c("GO term", "GO id"), sep = " \\(") %>% 
-  mutate(`GO id` = gsub(")$", "", `GO id`)
-  ) %>% 
-  filter(`GO term` == location) %>% 
-  select(`GO term`, `GO id`) %>% 
-  unique()
-
-nuc_loc %>% 
-  group_by(type, location) %>% 
-  summarise(n = n(), .groups = "keep") %>% 
-  ggplot(aes(x = location, y = n, fill = type))+
-  geom_col() +
-  theme_bw() +
-  xlab("Nuclear location") +
-  scale_fill_viridis_d() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-tmp <- nuc_loc %>% 
-  group_by(Gene) %>% 
-  mutate(type = paste0("node", 1:n())) %>% 
-  select(`Gene`, location) %>% 
-  group_split() %>% 
-  lapply(function(i){
-    data.frame(
-      Gene = i$Gene[1],
-      expand.grid(i$location, i$location)
-    ) %>% 
-      filter(Var1 != Var2)
-  }) %>% 
-  bind_rows() %>% 
-  ungroup() %>% 
-  group_by(Var1,Var2) %>% 
-  summarise(n = n(), .groups = "keep")
-  
-library(igraph)  
-library(ggraph)
-mygraph <- graph_from_data_frame(tmp, directed = F)
-E(mygraph)$weight <-  tmp$n
-ggraph(mygraph, layout = 'linear') + 
-  geom_edge_arc(aes(edge_width = n, alpha = n),
-                end_cap = circle(2, 'mm'),
-                start_cap = circle(2, 'mm')) +
-  geom_node_label(aes(label = name))
-
 loc_tidy <- loc %>% 
   filter(Reliability != "Uncertain") %>% 
   select(`Gene name`,`Main location`, `Additional location`) %>%  
@@ -102,9 +47,10 @@ loc_n <- loc_tidy %>%
   group_by(`Main location`) %>%
   summarise(nGenes = n(), .groups = "keep")
 
-tmp <- lapply(loc_genes, function(i)
+loc_res <- lapply(loc_genes, function(i)
  # compartmentData(i)[1:2,] ) %>% 
-  compartmentData(i)[1,] ) %>% 
+  compartmentData(i)$enrichment[1,] 
+ ) %>% 
   bind_rows() %>% 
  mutate(trueComp = names(loc_genes)) %>% 
  # mutate(trueComp = as.vector(sapply(names(loc_genes), rep, 2))) %>% 
@@ -113,8 +59,19 @@ tmp <- lapply(loc_genes, function(i)
   mutate(n = paste0(n, "/", nGenes)) %>% 
   select(-nGenes)
 
+loc_supp <- lapply(1:length(loc_genes), function(i)
+  # compartmentData(i)[1:2,] ) %>% 
+  compartmentData(loc_genes[[i]])$enrichment %>% 
+    mutate(predComp = Compartment,
+           trueComp = names(loc_genes)[i])
+) %>% 
+  bind_rows() %>% 
+  # mutate(trueComp = as.vector(sapply(names(loc_genes), rep, 2))) %>% 
+  select(trueComp, predComp, FDR, n) %>% 
+  left_join(loc_n, c("trueComp" = "Main location")) %>% 
+  mutate(n = paste0(n, "/", nGenes)) %>% 
+  select(-nGenes) %>% 
+  filter(FDR < 0.05)
 
-
-
-write_csv(tmp, "~/subcell.csv")
-
+write_csv(loc_res, "data-raw/subcellResults_HPA.csv")
+write_csv(loc_supp, "data-raw/subcellResults_HPA_supp.csv")

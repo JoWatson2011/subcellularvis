@@ -1,0 +1,46 @@
+trueComp,predComp,FDR,n
+Actin filaments,Cytoskeleton,7.119985696230957e-7,14/29
+Cell Junctions,Plasma membrane,1.0576043989172917e-6,32/50
+Centriolar satellite,Cytoskeleton,0.01680802193423951,7/25
+Centrosome,Cytoskeleton,4.190195501614392e-17,37/78
+Centrosome,Cytoplasm,0.004847117551518022,54/78
+Cytosol,Cytoplasm,1.0758268025633852e-64,732/932
+Cytosol,Cytoskeleton,0.009224731067278828,132/932
+Endoplasmic reticulum,Endoplasmic reticulum,2.800213779960888e-109,158/234
+Endoplasmic reticulum,Cytoplasm,9.019545310899042e-20,192/234
+Endoplasmic reticulum,Golgi apparatus,0.0011663622576912583,34/234
+Endoplasmic reticulum,Intracellular vesicle,0.0015731611634072643,46/234
+Golgi apparatus,Golgi apparatus,1.0824268474183488e-68,122/262
+Golgi apparatus,Cytoplasm,6.309703365484293e-8,187/262
+Golgi apparatus,Endoplasmic reticulum,6.270553450651005e-7,52/262
+Golgi apparatus,Intracellular vesicle,2.640683559944519e-6,58/262
+Golgi apparatus,Extracellular region,6.243721984752265e-4,83/262
+Intermediate filaments,Cytoskeleton,6.62768165431412e-14,26/50
+Lipid droplets,Endoplasmic reticulum,4.7458574536683273e-4,6/12
+Microtubules,Cytoskeleton,8.884011933266092e-9,22/51
+Mitochondria,Mitochondrion,0,399/557
+Mitochondria,Cytoplasm,7.687365363360144e-59,483/557
+Mitochondria,Ribosome,5.14343936739183e-19,39/557
+Mitochondria,Peroxisome,0.006730636087303921,11/557
+Nuclear bodies,Nucleus,2.8836821180208637e-9,47/72
+Nuclear membrane,Nucleus,0.008171851716903534,23/37
+Nuclear speckles,Nucleus,1.0850462870116352e-40,157/188
+Nucleoli,Nucleus,2.621627573140815e-12,63/84
+Nucleoli fibrillar center,Nucleus,0.0164020929243913,23/42
+Nucleoli rim,Nucleus,0,6/7
+Nucleoplasm,Nucleus,0,1357/1666
+Peroxisomes,Cytoplasm,0,14/14
+Peroxisomes,Peroxisome,1.559469450324681e-29,13/14
+Plasma membrane,Plasma membrane,1.916151574157037e-76,242/317
+Plasma membrane,Intracellular vesicle,6.007458554875935e-7,71/317
+Plasma membrane,Extracellular region,1.2866715535904982e-5,108/317
+Plasma membrane,Endosome,0.004633872932794609,29/317
+Vesicles,Intracellular vesicle,2.104897687713749e-42,191/594
+Vesicles,Endosome,3.734923391692816e-31,103/594
+Vesicles,Lysosome,7.209162879630286e-22,74/594
+Vesicles,Vacuole,3.534349277651729e-21,78/594
+Vesicles,Golgi apparatus,4.855157442788449e-10,90/594
+Vesicles,Extracellular region,1.8188500076771534e-9,194/594
+Vesicles,Cytoplasm,2.4654633974166063e-9,401/594
+Vesicles,Endoplasmic reticulum,4.327699640016987e-6,92/594
+Vesicles,Plasma membrane,4.65855021407782e-4,203/594

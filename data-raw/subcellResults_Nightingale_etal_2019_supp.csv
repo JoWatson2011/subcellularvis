@@ -1,0 +1,26 @@
+trueComp,predComp,FDR,n
+Cytosol,Cytoplasm,3.880850302022982e-26,739/890
+Cytosol,Golgi apparatus,0.01033441472558882,65/890
+ER,Cytoplasm,0,165/170
+ER,Endoplasmic reticulum,3.1451626587653056e-118,148/170
+ER,Peroxisome,0.001827791585613923,10/170
+Golgi,Golgi apparatus,1.6588124883237307e-86,80/109
+Golgi,Intracellular vesicle,5.755699722397338e-20,36/109
+Golgi,Endoplasmic reticulum,1.270097985621676e-12,41/109
+Golgi,Cytoplasm,2.7595534967208058e-8,97/109
+Golgi,Endosome,3.050674139135974e-8,18/109
+Golgi,Vacuole,3.6017117767002996e-7,27/109
+Mitochondrion,Cytoplasm,0,183/186
+Mitochondrion,Mitochondrion,0,183/186
+Nucleus,Nucleus,2.622718860981574e-35,533/864
+Nucleus,Cytoskeleton,3.975845706627647e-6,73/864
+Plasma membrane,Plasma membrane,1.4074521651944428e-69,160/401
+Plasma membrane,Vacuole,1.0220939740537574e-30,108/401
+Plasma membrane,Endoplasmic reticulum,3.960992840889178e-30,128/401
+Plasma membrane,Intracellular vesicle,1.7300323920280952e-14,62/401
+Plasma membrane,Endosome,3.48269910254388e-14,47/401
+Plasma membrane,Cytoplasm,1.4918845315004813e-8,334/401
+Plasma membrane,Lysosome,1.248370616202868e-6,5/401
+Plasma membrane,Extracellular region,0.007085902675347443,17/401
+Plasma membrane,Cytoskeleton,0.020056626570809522,30/401
+Plasma membrane,Golgi apparatus,0.028635095487731965,32/401

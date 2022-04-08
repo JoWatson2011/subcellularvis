@@ -1,0 +1,85 @@
+trueComp,predComp,FDR,n
+Cell junction,Plasma membrane,5.867597436276691e-35,153/235
+Cell junction,Cytoskeleton,1.0918297810050657e-34,99/235
+Cell junction,Cytoplasm,2.5582986250278713e-16,188/235
+Cell junction,Intracellular vesicle,5.4368746475138e-7,56/235
+Cell junction,Endosome,0.009107083148968792,22/235
+Cell junction,Golgi apparatus,0.018399312477966855,30/235
+Chromatin,Nucleus,2.3261093431352532e-126,354/383
+ER membrane,Endoplasmic reticulum,4.937131733627673e-58,86/127
+ER membrane,Cytoplasm,1.0564633407925593e-9,105/127
+ER membrane,Golgi apparatus,0.0015928056543663021,22/127
+ER membrane,Intracellular vesicle,0.02520029988819093,26/127
+Mitochondrial matrix,Mitochondrion,4.605521655936477e-262,266/299
+Mitochondrial matrix,Cytoplasm,2.3248138023617255e-50,282/299
+Mitochondrial matrix,Ribosome,1.4286839256159238e-33,43/299
+Mitochondrial matrix,Peroxisome,3.3711404376765073e-6,12/299
+"Actin, cytosol",Cytoskeleton,2.7485908978965046e-57,142/300
+"Actin, cytosol",Cytoplasm,4.708496625838457e-38,261/300
+"Actin, cytosol",Intracellular vesicle,0.006795217055164806,54/300
+"Actin, cytosol",Plasma membrane,0.013101038044860788,107/300
+ER lumen,Endoplasmic reticulum,7.103217426080915e-88,122/165
+ER lumen,Cytoplasm,1.368580486748573e-20,149/165
+ER lumen,Extracellular region,4.533077961456028e-10,76/165
+ER lumen,Intracellular vesicle,2.2846972248967015e-7,46/165
+ER lumen,Vacuole,3.342169641046084e-6,22/165
+ER lumen,Lysosome,6.214018744286677e-6,20/165
+ER lumen,Golgi apparatus,6.011201951661414e-5,30/165
+"Endosome, lysosome",Endosome,4.7492063592211054e-68,87/173
+"Endosome, lysosome",Vacuole,1.1873608403046732e-65,80/173
+"Endosome, lysosome",Lysosome,6.158584154185722e-63,75/173
+"Endosome, lysosome",Intracellular vesicle,1.5240216136114785e-59,110/173
+"Endosome, lysosome",Cytoplasm,2.0291820283086336e-21,153/173
+"Endosome, lysosome",Golgi apparatus,1.9260702265581265e-18,53/173
+Nucleolus,Nucleus,5.180915512754781e-48,145/164
+Nucleoplasm,Nucleus,9.377408643639606e-66,222/247
+Nuclear body,Nucleus,1.170134081487285e-102,279/295
+Plasma membrane,Plasma membrane,1.2193063664168273e-52,248/376
+Plasma membrane,Intracellular vesicle,8.327338192923566e-15,102/376
+Plasma membrane,Cytoplasm,3.697208648613667e-11,283/376
+Plasma membrane,Cytoskeleton,1.0640881811480166e-8,84/376
+Plasma membrane,Endosome,3.2545054310062073e-6,42/376
+Plasma membrane,Golgi apparatus,3.007822984441224e-4,52/376
+Plasma membrane,Extracellular region,0.00111638834081665,117/376
+Plasma membrane,Vacuole,0.012147766308853194,27/376
+Plasma membrane,Lysosome,0.03222880191250195,23/376
+Centrosome,Cytoskeleton,5.82532007421588e-58,130/258
+Centrosome,Cytoplasm,1.7900342554570104e-20,208/258
+Centrosome,Peroxisome,3.1600876717312035e-8,13/258
+"Mitochondrial Membrane, Peroxisome",Mitochondrion,1.4127692124559963e-32,74/189
+"Mitochondrial Membrane, Peroxisome",Cytoplasm,2.010434016885432e-30,172/189
+"Mitochondrial Membrane, Peroxisome",Peroxisome,3.3966099476510982e-28,27/189
+"Mitochondrial Membrane, Peroxisome",Endoplasmic reticulum,1.176635018211682e-6,42/189
+"Mitochondrial Membrane, Peroxisome",Golgi apparatus,1.076750792638435e-4,32/189
+"Mitochondrial Membrane, Peroxisome",Endosome,0.0013552511322344459,21/189
+"Mitochondrial Membrane, Peroxisome",Intracellular vesicle,0.0019635472465737934,39/189
+Golgi,Golgi apparatus,2.105321209170581e-62,89/146
+Golgi,Intracellular vesicle,1.0599394690337866e-23,66/146
+Golgi,Cytoplasm,7.589371614767254e-15,125/146
+Golgi,Endoplasmic reticulum,4.429377749505091e-11,43/146
+Golgi,Endosome,4.1248489390248175e-9,27/146
+Golgi,Lysosome,1.586640310755275e-4,16/146
+Golgi,Vacuole,6.511185850628699e-4,16/146
+Nuclear outer membrane-ER membrane network,Endoplasmic reticulum,7.256068852389769e-97,159/262
+Nuclear outer membrane-ER membrane network,Cytoplasm,6.280197165146577e-28,224/262
+Nuclear outer membrane-ER membrane network,Golgi apparatus,1.3925843968987712e-6,45/262
+Nuclear outer membrane-ER membrane network,Intracellular vesicle,0.008800567655596232,48/262
+Cytoplasmic RNP granule,Cytoplasm,5.4465660374493215e-12,120/143
+Cytoplasmic RNP granule,Nucleus,1.7265840688116808e-9,93/143
+Cytoplasmic RNP granule,Ribosome,2.225040766977574e-8,13/143
+Microtubules,Cytoskeleton,1.6891693384519515e-59,87/115
+Microtubules,Cytoplasm,4.725494509280664e-12,100/115
+"Mitochondrial inner membrane, Mitochondrial inter membrane space",Mitochondrion,1.9237658692508485e-99,106/122
+"Mitochondrial inner membrane, Mitochondrial inter membrane space",Cytoplasm,1.782733733736274e-19,115/122
+Misc.,Cytoplasm,4.80374243573729e-22,237/279
+Misc.,Nucleus,5.701296068293553e-22,192/279
+Misc.,Ribosome,9.735730802980427e-17,27/279
+Misc.,Cytoskeleton,6.737702424722856e-8,66/279
+Misc.,Extracellular region,0.006374898241583915,88/279
+"Early endosome, Recycling endosome",Intracellular vesicle,6.737876977005044e-37,80/146
+"Early endosome, Recycling endosome",Endosome,9.112937355481179e-33,53/146
+"Early endosome, Recycling endosome",Cytoplasm,1.3631032514879526e-15,125/146
+"Early endosome, Recycling endosome",Golgi apparatus,6.688632495889816e-14,42/146
+"Early endosome, Recycling endosome",Plasma membrane,0.004865121932338079,59/146
+"Early endosome, Recycling endosome",Vacuole,0.006751506056796327,14/146
+"Early endosome, Recycling endosome",Lysosome,0.045675014459292465,11/146
