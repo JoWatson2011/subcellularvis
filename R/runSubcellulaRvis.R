@@ -54,13 +54,19 @@ compartmentData <- function(genes, bkgd = NULL,
                 ifelse(subAnnots, "_subannots", "_annots")
                 )
   COMPARTMENTS_parent <- eval(as.name(dat))
-  COMPARTMENTS_parent <- distinct(COMPARTMENTS_parent[,c("compartment", id_type[1])])
+  COMPARTMENTS_parent <- dplyr::select(COMPARTMENTS_parent,
+                                dplyr::any_of(c("compartment", id_type[1],
+                                                "group")
+                                              )
+                                ) %>% 
+    dplyr::distinct()
+  
   
   if(is.null(bkgd)){
     bkgd_size  <- length(unique(COMPARTMENTS_parent[,id_type[1]]))
-  } else {2
+  } else {
     COMPARTMENTS_parent <- COMPARTMENTS_parent[COMPARTMENTS_parent[,id_type[1]] %in% bkgd,]
-    bkgd_size  <-  length(bkgd)
+    bkgd_size  <-  length(unique(COMPARTMENTS_parent[,id_type[1]]))
   }
   
   if(subAnnots == T) {
@@ -87,12 +93,12 @@ compartmentData <- function(genes, bkgd = NULL,
           # dplyr::filter(
           #   .data$SYMBOL %in% genes 
           # ) %>% 
-          unique() %>% 
+          dplyr::distinct() %>% 
           nrow() # How many times term 'i' occurred in sample
         
         successes.bkgd <- COMPARTMENTS_parent %>% 
           dplyr::filter(.data$compartment == x) %>% 
-          unique() %>% 
+          dplyr::distinct() %>% 
           nrow()    #How many times term 'i' occurred in background
         
         failure <- bkgd_size - successes.bkgd  
@@ -106,21 +112,19 @@ compartmentData <- function(genes, bkgd = NULL,
                                  sampleSize,
                                  lower.tail = F)
         
-        symbols <- COMPARTMENTS_parent %>% 
+        symbols <- COMPARTMENTS_parent[COMPARTMENTS_parent[,id_type[1]] %in% 
+                                         genes,] %>% 
           dplyr::filter(.data$compartment == x) %>% 
-          dplyr::filter(
-            .data$SYMBOL %in% genes 
-          ) %>% 
           dplyr::select(
-            .data$SYMBOL
+            id_type[1]
           ) %>% 
           unique()
         
         return(
           data.frame(
             Compartment = x,
-            Symbol = paste(symbols$SYMBOL, collapse = ","),
-            n = length(unique(symbols$SYMBOL)),
+            Genes = paste(symbols[,id_type[1]], collapse = ","),
+            n = length(unique(symbols[,id_type[1]])),
             p = samplep)
         )  
       }) %>% 
@@ -131,9 +135,8 @@ compartmentData <- function(genes, bkgd = NULL,
                                            .data$n > 0, T, F)
       ) %>% 
       dplyr::arrange(.data$FDR) %>% 
-      dplyr::select(.data$Compartment, .data$p,
-                    .data$FDR, .data$Significant,
-                    .data$n, .data$Symbol)
+      dplyr::select(Compartment = 1, p = 4, FDR = 5, 
+                    Significant = 6, n = 3, Genes = 2)
     
     
     if(subAnnots){
@@ -147,13 +150,13 @@ compartmentData <- function(genes, bkgd = NULL,
                         .data$FDR, 
                         .data$Significant,
                         .data$n, 
-                        .data$Symbol) %>% 
+                        .data$Genes) %>% 
         dplyr::summarise(group = paste(.data$group, collapse = ", "), 
                          .groups = "keep") %>% 
         dplyr::arrange(.data$FDR) %>% 
         dplyr::select(.data$Compartment,.data$group,
                       .data$FDR, .data$Significant,
-                      .data$n, .data$Symbol) %>% 
+                      .data$n, .data$Genes) %>% 
         as.data.frame()
     }
     
@@ -193,7 +196,7 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
                               labels = T,
                               significanceThresh = 0.05){
   
-  if(any(colnames(compsDat) != c("Compartment","p","FDR","Significant","n","Symbol"))){
+  if(any(colnames(compsDat) != c("Compartment","p","FDR","Significant","n","Genes"))){
     stop("compsDat must be the output of compartmentData() function.")
   }
   
@@ -468,8 +471,8 @@ runSubcellulaRvis <- function(compsDat, colScheme_low,
 #' 
 plotOverlap <- function(compsDat){
   upsetFormat <- compsDat %>% 
-    dplyr::select(.data$Compartment, Symbol) %>% 
-    tidyr::separate_rows(.data$Symbol, sep = ",") %>% 
+    dplyr::select(.data$Compartment, .data$Genes) %>% 
+    tidyr::separate_rows(.data$Genes, sep = ",") %>% 
     dplyr::mutate(value = 1) %>% 
     tidyr::pivot_wider(names_from="Compartment",
                        values_fill = 0) 
@@ -484,19 +487,19 @@ plotOverlap <- function(compsDat){
   )
   
   upsetDat <- compsDat %>% 
-    dplyr::select(.data$Compartment, .data$Symbol) %>% 
-    tidyr::separate_rows(.data$Symbol, sep = ",") %>% 
-    dplyr::group_by(.data$Symbol) %>% 
+    dplyr::select(.data$Compartment, .data$Genes) %>% 
+    tidyr::separate_rows(.data$Genes, sep = ",") %>% 
+    dplyr::group_by(.data$Genes) %>% 
     dplyr::summarise(Compartment = 
                        paste(.data$Compartment,
                              collapse = ",")
     ) %>% 
     dplyr::group_by(.data$Compartment) %>% 
-    dplyr::summarise(Symbol = 
-                       paste(.data$Symbol,
+    dplyr::summarise(Genes = 
+                       paste(.data$Genes,
                              collapse = ","),
                      OverlapSize = dplyr::n()) %>%
-    dplyr::filter(Symbol != "") %>% 
+    dplyr::filter(.data$Genes != "") %>% 
     dplyr::arrange(dplyr::desc(.data$OverlapSize))
   
   return(list(
