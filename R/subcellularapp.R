@@ -77,7 +77,7 @@ subcellularapp <- function(...){
         #                      label = "Interested in trafficking?"),
         shiny::numericInput(
           inputId = "significanceThresh",
-          label = "FDR Signficance Threshold",
+          label = "FDR Significance Threshold",
           min = 0, max = 0.05,
           value = 0.05),
         htmltools::br(),
