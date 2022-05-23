@@ -342,10 +342,10 @@ subcellularapp <- function(...){
         shiny::tabPanel(
           "Help",
           htmltools::br(),
-          htmltools::p("View our publication describing SubcellulaRVis on BioRXiv:"),
+          htmltools::p("View our publication describing SubcellulaRVis:"),
           htmltools::tagList(
-            htmltools::a("https://doi.org/10.1101/2021.11.18.469118 ",
-                         href = "https://doi.org/10.1101/2021.11.18.469118")
+            htmltools::a("https://doi.org/10.1093/nar/gkac336",
+                         href = "https://doi.org/10.1093/nar/gkac336")
           ),
           htmltools::br(),
           htmltools::br(),
