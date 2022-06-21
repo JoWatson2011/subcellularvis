@@ -31,12 +31,12 @@ Or you can run analysis outside of the app:
 ``` r
 genes <- c("MAPK1", "MAPK3")
 comps <- compartmentData(genes)
-runSubcellulaRvis(comps, 
+runSubcellulaRvis(comps$enrichment, 
                   colScheme_low = "lightblue", 
                   colScheme_high = "darkblue")
 
 # Use plotly for interactive visualisation
-plotly::ggplotly(runSubcellulaRvis(comps, 
+plotly::ggplotly(runSubcellulaRvis(comps$enrichment, 
                                    colScheme_low = "lightblue", 
                                    colScheme_high = "darkblue")
                                    )
