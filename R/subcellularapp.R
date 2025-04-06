@@ -405,7 +405,7 @@ subcellularapp <- function(...){
                           https://github.com/JoWatson2011/subcellularvis</a>.</p>"),
           htmltools::br(),
           htmltools::p("If you could not find your answer here, please 
-            contact: joanne.watson@manchester.ac.uk\n
+            contact: jean-marc.schwartz@manchester.ac.uk\n
             or raise an issue on the GitHub repository:" ),
           htmltools::tagList(
             htmltools::a("www.github.com/jowatson2011/subcellularvis",
